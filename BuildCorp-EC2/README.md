@@ -55,75 +55,88 @@ Para iniciar la EC2 de la evaluación, ajustar la IP y comprobar el servicio, si
 
 ## Desplegar en EC2
 
-Usa una instancia Ubuntu de AWS Academy. En el grupo de seguridad habilita SSH (22) desde tu IP y HTTP (80) para la demostración. Si vas a usar HTTPS, habilita también 443. PostgreSQL y Gunicorn quedan en la misma instancia y escuchan en localhost. [Reglas de seguridad de EC2](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/security-group-rules-reference.html)
+Esta secuencia reproduce el despliegue inicial de BuildCorp en una EC2 Ubuntu de AWS Academy. En el grupo de seguridad habilita SSH (22) desde tu IP y HTTP (80) para la demostración. PostgreSQL y Gunicorn escuchan en localhost. Si la instancia ya está configurada, usa [Reanudar la instancia existente](#reanudar-la-instancia-existente).
+
+### 1. Instalar paquetes y copiar el proyecto
 
 ```bash
-sudo apt update
-sudo apt install -y git unzip python3-venv postgresql nginx
-sudo install -d -o ubuntu -g ubuntu /opt/buildcorp
-```
-
-Clona el repositorio desde la instancia:
-
-```bash
+sudo apt-get update
+sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y git unzip python3-venv postgresql nginx
 git clone https://github.com/MarceloDh/BuildCorp-Backend.git ~/buildcorp-repo
+sudo install -d -o ubuntu -g ubuntu /opt/buildcorp
 cp -a ~/buildcorp-repo/BuildCorp-EC2/. /opt/buildcorp/
-```
-
-Si prefieres llevar el ZIP, cópialo desde tu computador con `scp`. Sustituye la ruta de la llave y `IP_PUBLICA` por tus datos:
-
-```powershell
-scp -i "RUTA_LLAVE.pem" .\BuildCorp-EC2.zip ubuntu@IP_PUBLICA:~/
-```
-
-En la instancia, si usaste el ZIP, ejecuta `unzip ~/BuildCorp-EC2.zip -d /opt/buildcorp`. Luego sigue con la configuración:
-
-```bash
 cd /opt/buildcorp
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
+```
+
+### 2. Crear la base de datos y configurar Django
+
+```bash
 sudo -u postgres createuser --pwprompt buildcorp
 sudo -u postgres createdb --owner=buildcorp buildcorp
 touch .env
 chmod 600 .env
-.venv/bin/python -c 'import secrets; print(secrets.token_urlsafe(48))'
+openssl rand -hex 48
 nano .env
 ```
 
-En `.env` completa `SECRET_KEY` con la clave generada, `ALLOWED_HOSTS` con la IP pública o DNS sin protocolo y `DB_PASSWORD` con la contraseña elegida para PostgreSQL. Configura además `DEBUG=0`, `DB_ENGINE=postgresql`, `DB_NAME=buildcorp`, `DB_USER=buildcorp`, `DB_HOST=127.0.0.1`, `DB_PORT=5432`, `ADMIN_PATH=gestion` y `HTTPS=0` para la demo HTTP. Mantén `.env` fuera del repositorio.
+Usa la contraseña que acabas de elegir y el valor generado por OpenSSL. Sustituye los marcadores y guarda el archivo solo en la instancia.
 
-Para una demostración temporal por IP con HTTP, usa cuentas y firmas ficticias. Para usar cuentas y firmas reales, configura TLS en Nginx. Cuando Nginx sirva el sitio por HTTPS, establece `HTTPS=1` y `CSRF_TRUSTED_ORIGINS=https://TU_DOMINIO`. Activa `HSTS_SECONDS` solo después de verificar que HTTPS funciona.
+```dotenv
+DEBUG=0
+SECRET_KEY=CLAVE_GENERADA
+ALLOWED_HOSTS=IP_PUBLICA,127.0.0.1,localhost
+ADMIN_PATH=gestion
+HTTPS=0
+DB_ENGINE=postgresql
+DB_NAME=buildcorp
+DB_USER=buildcorp
+DB_PASSWORD=CONTRASENA_ELEGIDA
+DB_HOST=127.0.0.1
+DB_PORT=5432
+```
+
+En el despliegue original el script generó ambos secretos en la EC2 y creó la base mediante `psql`. Aquí los comandos interactivos permiten reproducir esa misma configuración sin publicar secretos. Para la demostración HTTP usa datos y firmas ficticios.
+
+### 3. Aplicar migraciones y preparar la aplicación
 
 ```bash
-.venv/bin/python manage.py migrate
+.venv/bin/python manage.py migrate --noinput
 .venv/bin/python manage.py migrate --check
 .venv/bin/python manage.py crear_roles
-.venv/bin/python manage.py createsuperuser
 .venv/bin/python manage.py collectstatic --noinput
-.venv/bin/python manage.py check --deploy
-sudo cp deploy/buildcorp.service /etc/systemd/system/buildcorp.service
-sudo systemctl daemon-reload
-sudo systemctl enable --now buildcorp
-sudo cp deploy/nginx.conf /etc/nginx/sites-available/buildcorp
-sudoedit /etc/nginx/sites-available/buildcorp
-# Reemplaza REEMPLAZAR_IP_O_DNS por la IP o DNS real.
-sudo ln -s /etc/nginx/sites-available/buildcorp /etc/nginx/sites-enabled/buildcorp
+.venv/bin/python manage.py createsuperuser
+```
+
+El último comando permite crear una cuenta de administración para la demostración.
+
+### 4. Configurar Gunicorn y Nginx
+
+Reemplaza `IP_PUBLICA` por la IPv4 que muestra EC2.
+
+```bash
+IP_PUBLICA=REEMPLAZAR_CON_IPV4
+sudo install -m 644 deploy/buildcorp.service /etc/systemd/system/buildcorp.service
+sed "s/REEMPLAZAR_IP_O_DNS/${IP_PUBLICA}/" deploy/nginx.conf | sudo tee /etc/nginx/sites-available/buildcorp >/dev/null
+sudo ln -sfn /etc/nginx/sites-available/buildcorp /etc/nginx/sites-enabled/buildcorp
 sudo nginx -t
+sudo systemctl daemon-reload
+sudo systemctl enable buildcorp
+sudo systemctl restart buildcorp
 sudo systemctl reload nginx
 ```
 
-`check --deploy` puede avisar sobre HTTPS o HSTS según el modo elegido. La configuración mantiene desactivada la precarga HSTS y la extensión a subdominios, ya que dependen del dominio que uses. En `deploy/nginx.conf` se sirve la ruta `/static/` incluso si cambias `APP_PREFIX`. Con un prefijo, incluye ese segmento antes de `/acceso/` y de la ruta de gestión.
-
-Comprueba que responde la instancia. Sustituye `IP_PUBLICA` por su dirección real:
+### 5. Verificar el despliegue
 
 ```bash
 sudo systemctl is-active postgresql buildcorp nginx
-curl --fail --silent --output /dev/null http://IP_PUBLICA/acceso/
-curl --fail --silent --output /dev/null http://IP_PUBLICA/static/buildcorp/esfinge.png
-.venv/bin/python manage.py shell -c "from django.db import connection; connection.ensure_connection(); print(connection.vendor, connection.pg_version)"
+.venv/bin/python manage.py showmigrations inventario
+.venv/bin/python manage.py shell -c 'from django.db import connection; connection.ensure_connection(); print(connection.vendor, connection.pg_version)'
+curl -fsS -H "Host: ${IP_PUBLICA}" http://127.0.0.1/ -o /dev/null
 ```
 
-Abre la URL desde tu computador, entra con el superusuario creado en EC2 y ejecuta la prueba de defensa. Anota la URL real arriba en este README. Entrega en AAI el enlace de GitHub o GitLab con acceso para el docente. [Lista de comprobación de despliegue](https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/)
+Los tres servicios deben mostrar `active`, las seis migraciones deben aparecer con `[X]` y la comprobación de Django debe mostrar `postgresql` y su versión. Desde tu computador, abre `http://IP_PUBLICA/` y `http://IP_PUBLICA/gestion/`. Las [capturas del despliegue inicial](../README.md#evidencias-del-despliegue-inicial) están en el README principal.
 
 ## Verificación antes de entregar
 
