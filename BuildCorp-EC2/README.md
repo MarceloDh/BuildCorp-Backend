@@ -2,14 +2,15 @@
 
 Evaluación 3 de Desarrollo Backend. Aplicación para controlar herramientas, préstamos y mantenimientos en bodegas de obra.
 
-**URL pública de EC2:** pendiente de despliegue. Sustituir esta línea por la dirección real antes de entregar el repositorio.
+**URL pública verificada el 11 de noviembre de 2026:** [http://98.90.198.186/](http://98.90.198.186/). La instancia `BuildCorp-EVA3` (`i-0226953f2ce33aba0`) está en `us-east-1`. Tras detenerla e iniciarla, consulta la nueva IP y actualiza `ALLOWED_HOSTS`, `server_name` en Nginx y la URL en ambos README.
 
 ## Ejecutar en Windows
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python -m pip install -r requirements.txt
-Copy-Item .env.example .env
+$env:DEBUG = "1"
+$env:DB_ENGINE = "sqlite"
 .\.venv\Scripts\python manage.py migrate
 .\.venv\Scripts\python manage.py crear_roles
 .\.venv\Scripts\python manage.py createsuperuser
@@ -61,7 +62,8 @@ sudo install -d -o ubuntu -g ubuntu /opt/buildcorp
 Clona el repositorio desde la instancia:
 
 ```bash
-git clone URL_REAL_DEL_REPOSITORIO /opt/buildcorp
+git clone https://github.com/MarceloDh/BuildCorp-Backend.git ~/buildcorp-repo
+cp -a ~/buildcorp-repo/BuildCorp-EC2/. /opt/buildcorp/
 ```
 
 Si prefieres llevar el ZIP, cópialo desde tu computador con `scp`. Sustituye la ruta de la llave y `IP_PUBLICA` por tus datos:
@@ -78,13 +80,13 @@ python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
 sudo -u postgres createuser --pwprompt buildcorp
 sudo -u postgres createdb --owner=buildcorp buildcorp
-cp -n .env.ec2.example .env
+touch .env
 chmod 600 .env
 .venv/bin/python -c 'import secrets; print(secrets.token_urlsafe(48))'
 nano .env
 ```
 
-En `.env` completa `SECRET_KEY` con la clave generada, `ALLOWED_HOSTS` con la IP pública o DNS sin protocolo y `DB_PASSWORD` con la contraseña elegida para PostgreSQL. La plantilla de EC2 ya trae `DEBUG=0` y la conexión local a PostgreSQL. Mantén `.env` fuera del repositorio.
+En `.env` completa `SECRET_KEY` con la clave generada, `ALLOWED_HOSTS` con la IP pública o DNS sin protocolo y `DB_PASSWORD` con la contraseña elegida para PostgreSQL. Configura además `DEBUG=0`, `DB_ENGINE=postgresql`, `DB_NAME=buildcorp`, `DB_USER=buildcorp`, `DB_HOST=127.0.0.1`, `DB_PORT=5432`, `ADMIN_PATH=gestion` y `HTTPS=0` para la demo HTTP. Mantén `.env` fuera del repositorio.
 
 Para una demostración temporal por IP con HTTP, usa cuentas y firmas ficticias. Para usar cuentas y firmas reales, configura TLS en Nginx. Cuando Nginx sirva el sitio por HTTPS, establece `HTTPS=1` y `CSRF_TRUSTED_ORIGINS=https://TU_DOMINIO`. Activa `HSTS_SECONDS` solo después de verificar que HTTPS funciona.
 
@@ -119,13 +121,34 @@ curl --fail --silent --output /dev/null http://IP_PUBLICA/static/buildcorp/esfin
 
 Abre la URL desde tu computador, entra con el superusuario creado en EC2 y ejecuta la prueba de defensa. Anota la URL real arriba en este README. Entrega en AAI el enlace de GitHub o GitLab con acceso para el docente. [Lista de comprobación de despliegue](https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/)
 
+## Verificación antes de entregar
+
+En una base de pruebas PostgreSQL 16.2, se aplicaron las seis migraciones de `inventario`. Pasaron las 16 pruebas de Django, incluidas las pruebas de concurrencia de reservas y entregas. Para repetirlas, usa una base PostgreSQL de desarrollo y un rol de pruebas que pueda crear una base temporal:
+
+```bash
+python manage.py makemigrations --check --dry-run
+python manage.py test -v 2
+```
+
+En EC2, después de migrar, registra la evidencia de PostgreSQL sin mostrar el archivo `.env`:
+
+```bash
+.venv/bin/python manage.py showmigrations inventario
+sudo -u postgres psql -d buildcorp -c "SELECT current_database(), current_setting('server_version');"
+sudo -u postgres psql -d buildcorp -c "SELECT name, applied FROM django_migrations WHERE app = 'inventario' ORDER BY name;"
+```
+
+En el navegador, usa cuentas y firmas de demostración. Guarda una captura de la instancia en ejecución, la salida anterior, la portada con su IP visible, el Admin con sus filtros y los resultados de cada flujo. Si cambias `ADMIN_PATH` o `APP_PREFIX`, reinicia `buildcorp` para que Gunicorn cargue los valores nuevos.
+
 ## Prueba para la defensa
 
 1. Crea una obra con dos bodegas, un contratista y dos herramientas. Traslada una y muestra el registro del movimiento.
 2. Programa una revisión a las 5 horas acumuladas y entrega esa herramienta con firma.
 3. Para demostrar morosidad en pocos minutos, registra la entrega con un vencimiento uno o dos minutos en el futuro. Después del vencimiento, recarga el resumen y prueba un segundo préstamo para ese contratista.
 4. Registra la devolución con firma y 5 horas de uso. Comprueba que el contratista se desbloqueó, que apareció la revisión pendiente y que la herramienta no puede prestarse hasta hacer el mantenimiento.
-5. Inicia y completa el mantenimiento. Muestra los filtros y registros en gestión interna.
+5. Inicia y completa el mantenimiento por horas. En otra herramienta, programa una revisión con fecha límite de hoy y muestra que ya corresponde realizarla. Da de baja una herramienta sin operaciones pendientes y muestra el cuarto estado del inventario.
+6. Abre Django Admin con un superusuario y muestra la marca BuildCorp, la búsqueda por código y los filtros de estado. Con una cuenta de Bodega, demuestra que puede registrar entregas pero no crear herramientas. Con una cuenta de contratista, muestra que solo puede ver sus propios préstamos.
+7. Cierra explicando que Nginx recibe la petición pública, Gunicorn ejecuta Django y el ORM guarda los registros en PostgreSQL dentro de la misma EC2. Muestra las migraciones aplicadas y vuelve a abrir un préstamo para enseñar las dos firmas persistidas.
 
 ## Arquitectura 4+1
 
