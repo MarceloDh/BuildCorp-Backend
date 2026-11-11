@@ -2,7 +2,7 @@
 
 Evaluación 3 de Desarrollo Backend. Aplicación para controlar herramientas, préstamos y mantenimientos en bodegas de obra.
 
-**URL pública verificada el 11 de noviembre de 2026:** [http://98.90.198.186/](http://98.90.198.186/). La instancia `BuildCorp-EVA3` (`i-0226953f2ce33aba0`) está en `us-east-1`. Tras detenerla e iniciarla, consulta la nueva IP y actualiza `ALLOWED_HOSTS`, `server_name` en Nginx y la URL en ambos README.
+**URL pública verificada el 11 de noviembre de 2026:** [http://54.160.224.202/](http://54.160.224.202/). La instancia `BuildCorp-EVA3` (`i-0226953f2ce33aba0`) está en `us-east-1`. Tras detenerla e iniciarla, consulta la nueva IP y actualiza `ALLOWED_HOSTS`, `server_name` en Nginx y la URL en ambos README.
 
 ## Ejecutar en Windows
 
@@ -48,6 +48,10 @@ En **Solicitudes** el personal puede abrir la reserva y pulsar **Registrar entre
 La firma es un trazo manuscrito capturado en pantalla, asociado al responsable, la cuenta que registra y la fecha. El atraso se calcula sobre préstamos abiertos al momento de consultar o intentar una entrega. El bloqueo desaparece al devolver el último préstamo vencido. Los mantenimientos se marcan por realizar cuando se cumple la fecha o el umbral de horas, lo que ocurra primero.
 
 La API JSON exige sesión de Bodega o Supervisión. Las rutas de consulta son `/api/herramientas/`, `/api/prestamos/`, `/api/mantenimientos/` y `/api/traslados/`. Los formularios web realizan las operaciones de escritura. Si defines `APP_PREFIX`, las rutas web, API y de gestión quedan bajo ese prefijo. `ADMIN_PATH` permite configurar el segmento de gestión. La IP o DNS permitido se configura con `ALLOWED_HOSTS`.
+
+## Reanudar la instancia existente
+
+Para iniciar la EC2 de la evaluación, ajustar la IP y comprobar el servicio, sigue [los pasos de reanudación del README principal](../README.md#reanudar-buildcorp-en-aws-academy).
 
 ## Desplegar en EC2
 
