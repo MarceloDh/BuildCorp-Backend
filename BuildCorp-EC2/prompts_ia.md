@@ -49,3 +49,11 @@ Para el gato ayudante de la portada y del historial vacío:
 Para el PNG de transferencia bancaria se utilizó la herramienta integrada de generación de imágenes.
 
 > One clean horizontal raster payment method icon on a pure white background. A small simple dark plum bank building pictogram on the left with two subtle opposing rose pink arrows underneath. To its right place the Spanish words 'Transferencia' on the first line and 'bancaria' on the second, in a clean geometric sans-serif similar to Poppins, dark plum. Minimal flat graphic, high contrast, readable at 160 pixels wide, no shadows, no border, no additional words, no logos or numbers.
+
+
+## Revisión de la Evaluación 3
+
+- Se pidió contrastar la rúbrica con el enunciado de BuildCorp, verificar la configuración del panel de administración y probar inventario, firmas, mantenimiento, atrasos, permisos y persistencia.
+- Codex ejecutó las 16 pruebas existentes sobre PostgreSQL 16.2 en un entorno local, verificó que las seis migraciones de inventario se aplicaran y comprobó que el Admin responde en `/control-qa/` al configurar `ADMIN_PATH=control-qa`. Actualizó el README con los pasos para repetir las pruebas y demostrar los flujos.
+
+- Se pidió desplegar y verificar la aplicación en AWS Academy, documentar la IP en GitHub y guardar evidencias sin datos personales. Se desplegó Django con Gunicorn y Nginx en la misma EC2 que PostgreSQL 18.6, con las seis migraciones de inventario aplicadas y roles de prueba ficticios.
