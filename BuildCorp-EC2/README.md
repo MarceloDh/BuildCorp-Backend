@@ -138,6 +138,20 @@ curl -fsS -H "Host: ${IP_PUBLICA}" http://127.0.0.1/ -o /dev/null
 
 Los tres servicios deben mostrar `active`, las seis migraciones deben aparecer con `[X]` y la comprobación de Django debe mostrar `postgresql` y su versión. Desde tu computador, abre `http://IP_PUBLICA/` y `http://IP_PUBLICA/gestion/`. Las [capturas del despliegue inicial](../README.md#evidencias-del-despliegue-inicial) están en el README principal.
 
+### Opciones de instalación
+
+Si el código se entrega como ZIP, puedes copiarlo desde tu computador y extraerlo en Ubuntu después de crear `/opt/buildcorp`:
+
+```powershell
+scp -i "RUTA_LLAVE.pem" .\BuildCorp-EC2.zip ubuntu@IP_PUBLICA:~/
+```
+
+```bash
+unzip ~/BuildCorp-EC2.zip -d /opt/buildcorp
+```
+
+Para HTTPS, habilita el puerto 443, configura TLS en Nginx y establece `HTTPS=1` y `CSRF_TRUSTED_ORIGINS=https://TU_DOMINIO`. Puedes comprobar los ajustes de producción con `.venv/bin/python manage.py check --deploy`. En la demostración por HTTP pueden aparecer avisos de HTTPS y HSTS. Si defines `APP_PREFIX`, incluye el prefijo en las URLs de acceso y del panel.
+
 ## Verificación antes de entregar
 
 En una base de pruebas PostgreSQL 16.2, se aplicaron las seis migraciones de `inventario`. Pasaron las 16 pruebas de Django, incluidas las pruebas de concurrencia de reservas y entregas. Para repetirlas, usa una base PostgreSQL de desarrollo y un rol de pruebas que pueda crear una base temporal:
