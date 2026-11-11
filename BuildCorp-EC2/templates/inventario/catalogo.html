@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block contenido %}
+<div class="encabezado">
+  <h1>{{ titulo }}</h1>
+  {% if puede_supervisar %}<a class="boton" href="{% url 'catalogo_nuevo' tipo %}">Registrar</a>{% endif %}
+</div>
+<div class="tabla"><table>
+<thead><tr><th>Nombre</th><th>{% if tipo == 'obras' %}Dirección{% elif tipo == 'bodegas' %}Obra{% else %}Identificador y estado{% endif %}</th>{% if puede_supervisar %}<th>Acciones</th>{% endif %}</tr></thead>
+<tbody>
+{% for objeto in pagina %}
+  <tr>
+    <td>{{ objeto.nombre }}</td>
+    <td>{% if tipo == 'obras' %}{{ objeto.direccion }}{% elif tipo == 'bodegas' %}{{ objeto.obra }}{% else %}
+      {{ objeto.identificador }}{% if objeto.contacto %} · {{ objeto.contacto }}{% endif %}
+      {% if objeto.bloqueado %}<strong class="peligro">· Bloqueado por atraso</strong>{% endif %}
+      {% if objeto.bloqueado_manual %}<strong class="peligro">· Bloqueado por administración</strong>{% endif %}
+    {% endif %}</td>
+    {% if puede_supervisar %}
+      <td><div class="acciones">
+        <a href="{% url 'catalogo_editar' tipo objeto.pk %}">Editar</a>
+        <form method="post" action="{% url 'eliminar' tipo objeto.pk %}">{% csrf_token %}<button class="secundario peligro">Eliminar</button></form>
+      </div></td>
+    {% endif %}
+  </tr>
+{% empty %}<tr><td colspan="{% if puede_supervisar %}3{% else %}2{% endif %}">No hay registros.</td></tr>{% endfor %}
+</tbody>
+</table></div>
+{% include "inventario/paginacion.html" %}
+{% endblock %}

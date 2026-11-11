@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block contenido %}
+<a href="{% url 'prestamos' %}">Volver a préstamos</a>
+<div class="encabezado">
+  <h1>Préstamo de {{ prestamo.activo.nombre }}</h1>
+  {% if not prestamo.devuelto_en %}<a class="boton" href="{% url 'devolucion' prestamo.pk %}">Registrar devolución</a>{% endif %}
+</div>
+<p>{{ prestamo.contratista }} · {{ prestamo.bodega }} · <strong>{{ prestamo.estado_visible }}</strong></p>
+<p>Fecha límite de devolución: {{ prestamo.vence_en|date:"d/m/Y H:i" }}</p>
+<section class="panel">
+  <h2>Entrega</h2>
+  <p>{{ prestamo.entregado_en|date:"d/m/Y H:i" }} · Registrada por {{ prestamo.entrega_por }}</p>
+  <p>Responsable: {{ prestamo.responsable_entrega }}</p>
+  <img class="firma" src="{{ prestamo.firma_entrega }}" alt="Firma de entrega">
+</section>
+{% if prestamo.devuelto_en %}
+<section class="panel">
+  <h2>Devolución</h2>
+  <p>{{ prestamo.devuelto_en|date:"d/m/Y H:i" }} · Registrada por {{ prestamo.devolucion_por }}</p>
+  <p>Responsable: {{ prestamo.responsable_devolucion }} · {{ prestamo.horas_utilizadas }} h de uso</p>
+  <img class="firma" src="{{ prestamo.firma_devolucion }}" alt="Firma de devolución">
+</section>
+{% endif %}
+{% endblock %}

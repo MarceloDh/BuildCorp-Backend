@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block titulo %}Crear cuenta · BuildCorp{% endblock %}
+{% block contenido %}
+<div class="encabezado"><div><p class="rotulo">Únete a BuildCorp</p><h1>Crear cuenta de contratista</h1></div><a href="{% url 'login' %}">Ya tengo cuenta</a></div>
+{% if user.is_authenticated %}<p class="mensaje">Estás usando la cuenta {{ user.username }}. Al crear una nueva cuenta, iniciarás sesión con ella.</p>{% endif %}
+<form method="post" class="panel campos registro-cliente">
+  {% csrf_token %}<input type="hidden" name="next" value="{{ siguiente }}">
+  {{ form.non_field_errors }}
+  <div class="campos-dobles">
+  {% for campo in form %}
+    <div>{{ campo.label_tag }}{{ campo }}{{ campo.errors }}{% if campo.help_text %}<small>{{ campo.help_text|safe }}</small>{% endif %}</div>
+  {% endfor %}
+  </div>
+  <button>Crear mi cuenta</button>
+</form>
+{% endblock %}

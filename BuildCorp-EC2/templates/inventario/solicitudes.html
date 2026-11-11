@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block contenido %}
+<h1>Solicitudes de clientes</h1>
+<p>Revisa el contacto, la fecha y la ubicación para coordinar con cada contratista.</p>
+<ul class="registros panel">
+  {% for solicitud in pagina %}
+    <li><a href="{% url 'solicitud_detalle' solicitud.referencia %}">{{ solicitud.servicio }}</a> · {{ solicitud.contratista.nombre }} · {{ solicitud.fecha|date:"d/m/Y" }} · {{ solicitud.comuna }} · {{ solicitud.estado_visible }}</li>
+  {% empty %}<li>No hay solicitudes registradas.</li>{% endfor %}
+</ul>
+{% include "inventario/paginacion.html" %}
+{% endblock %}

@@ -1,0 +1,13 @@
+[Unit]
+Description=Aplicación web BuildCorp
+After=network.target postgresql.service
+
+[Service]
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/opt/buildcorp
+ExecStart=/opt/buildcorp/.venv/bin/gunicorn --workers 2 --bind 127.0.0.1:8000 buildcorp.wsgi:application
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

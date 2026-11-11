@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block contenido %}
+<div class="encabezado"><h1>Préstamos</h1><a class="boton" href="{% url 'entrega' %}">Registrar entrega</a></div>
+<nav class="acciones" aria-label="Filtrar préstamos">
+  <a href="{% url 'prestamos' %}">Todos</a><a href="?estado=abiertos">Abiertos</a><a href="?estado=vencidos">Vencidos</a>
+</nav>
+<div class="tabla"><table>
+<thead><tr><th>Herramienta</th><th>Contratista</th><th>Bodega</th><th>Vencimiento</th><th>Estado</th></tr></thead>
+<tbody>
+{% for prestamo in pagina %}
+  <tr><td><a href="{% url 'prestamo_detalle' prestamo.pk %}">{{ prestamo.activo }}</a></td><td>{{ prestamo.contratista.nombre }}</td><td>{{ prestamo.bodega }}</td><td>{{ prestamo.vence_en|date:"d/m/Y H:i" }}</td><td {% if prestamo.vencido %}class="peligro"{% endif %}>{{ prestamo.estado_visible }}</td></tr>
+{% empty %}<tr><td colspan="5">No hay préstamos para mostrar.</td></tr>{% endfor %}
+</tbody>
+</table></div>
+{% include "inventario/paginacion.html" %}
+{% endblock %}

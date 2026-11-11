@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block contenido %}
+<div class="encabezado">
+  <h1>Herramientas</h1>
+  {% if puede_supervisar %}<a class="boton" href="{% url 'activo_nuevo' %}">Nueva herramienta</a>{% endif %}
+</div>
+<form method="get" class="acciones">
+  <input type="search" name="q" value="{{ q }}" placeholder="Código o nombre" aria-label="Buscar herramienta">
+  <button class="secundario">Buscar</button>
+  {% if q %}<a href="{% url 'activos' %}">Limpiar búsqueda</a>{% endif %}
+</form>
+<div class="tabla"><table>
+  <thead><tr><th>Herramienta</th><th>Bodega</th><th>Horas</th><th>Estado</th></tr></thead>
+  <tbody>
+  {% for activo in pagina %}
+    <tr><td><a href="{% url 'activo_detalle' activo.pk %}">{{ activo }}</a></td><td>{{ activo.bodega }}</td><td>{{ activo.horas_uso }}</td><td>{{ activo.estado_visible }}</td></tr>
+  {% empty %}
+    <tr><td colspan="4">No se encontraron herramientas.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% include "inventario/paginacion.html" %}
+{% endblock %}

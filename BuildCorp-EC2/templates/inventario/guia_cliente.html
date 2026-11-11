@@ -1,0 +1,37 @@
+{% load static %}
+<section class="seccion-cliente" aria-labelledby="titulo-guia">
+  <div class="encabezado-cliente">
+    <p class="rotulo">Tu próximo arriendo</p>
+    <h2 id="titulo-guia">De la herramienta a tu obra</h2>
+  </div>
+  <ol class="pasos-cliente">
+    <li><span aria-hidden="true">01</span><h3>Prepara tu cuenta</h3><p>Registra tus datos de contacto y ubicación para contratar y seguir tus arriendos.</p><a href="{% url 'registro' %}">Crear cuenta <span aria-hidden="true">→</span></a></li>
+    <li><span aria-hidden="true">02</span><h3>Revisa el importe</h3><p>Elige los días de arriendo o la cantidad de viajes y revisa el total.</p><a href="{% url 'catalogo_publico' %}#servicios">Ver servicios <span aria-hidden="true">→</span></a></li>
+    <li><span aria-hidden="true">03</span><h3>Consulta tus fechas</h3><p>Una vez que bodega registre la entrega, verás el plazo en tu cuenta.</p><a href="{% url 'portal_contratista' %}">Mis préstamos <span aria-hidden="true">→</span></a></li>
+  </ol>
+</section>
+<section id="ayuda" class="ayuda-cliente" aria-labelledby="titulo-ayuda">
+  <div class="ayuda-mascota">
+    <p class="rotulo">Ayuda de BuildCorp</p>
+    <h2 id="titulo-ayuda">Antes de arrendar</h2>
+    {% include "inventario/mascota_animada.html" with animacion="saludo" %}
+  </div>
+  <div class="preguntas">
+    <details>
+      <summary>¿Cómo confirmo que un equipo está disponible?</summary>
+      <p>Consulta con bodega por el equipo y las fechas que necesitas. El catálogo muestra los equipos publicados y bodega confirma la disponibilidad.</p>
+    </details>
+    <details>
+      <summary>¿Dónde veo cuándo tengo que devolver un equipo?</summary>
+      <p>En <a href="{% url 'portal_contratista' %}">Mis préstamos</a> puedes abrir cada equipo y ver la fecha límite y la bodega de entrega.</p>
+    </details>
+    <details>
+      <summary>¿Qué pasa si me atraso en la devolución?</summary>
+      <p>Tu cuenta muestra un aviso y bloquea los nuevos préstamos hasta que bodega registre las devoluciones pendientes.</p>
+    </details>
+    <details>
+      <summary>¿Cómo consigo acceso como contratista?</summary>
+      <p>Crea tu <a href="{% url 'registro' %}">cuenta de contratista</a> con tus datos de contacto y ubicación. Si ya tienes un registro con BuildCorp, contacta a bodega para vincularlo.</p>
+    </details>
+  </div>
+</section>

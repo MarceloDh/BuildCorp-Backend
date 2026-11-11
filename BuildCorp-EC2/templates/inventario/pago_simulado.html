@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% load static %}
+{% block titulo %}Confirmar arriendo · BuildCorp{% endblock %}
+{% block contenido %}
+<nav class="ruta" aria-label="Ubicación"><a href="{% url 'portada' %}">Inicio</a><span>›</span><a href="{% url 'catalogo_publico' %}">Servicios</a><span>›</span><span>Confirmar solicitud</span></nav>
+<h1 class="titulo-pago">Confirmar arriendo</h1>
+<p class="bajada-pago">Completa el contacto y la ubicación para que bodega coordine tu solicitud.</p>
+{% if not user.is_authenticated %}
+  <p class="mensaje">Necesitas una cuenta para contratar. <a href="{% url 'login' %}?next={{ request.path|urlencode }}">Iniciar sesión</a> o <a href="{% url 'registro' %}">crear cuenta</a>.</p>
+{% endif %}
+<form method="post" class="pago-layout">
+  {% csrf_token %}{{ form.token }}{{ form.token.errors }}{{ form.escenario }}
+  <section class="panel panel-pago campos" aria-labelledby="titulo-detalle">
+    <div class="producto-arriendo">
+      <span class="foto-servicio foto-{{ servicio.grupo }}" aria-hidden="true"></span>
+      <div><p class="rotulo">{{ servicio.categoria }}</p><h2 id="titulo-detalle">{{ servicio.nombre }}</h2></div>
+    </div>
+    <p>{{ servicio.descripcion }}</p>
+    {{ form.non_field_errors }}
+    <fieldset class="datos-contratacion">
+      <legend>Datos de contacto</legend>
+      <p>Los campos de contacto y ubicación son obligatorios.</p>
+      <div class="campos-dobles">
+        <div>{{ form.nombre.label_tag }}{{ form.nombre }}{{ form.nombre.errors }}</div>
+        <div>{{ form.apellido.label_tag }}{{ form.apellido }}{{ form.apellido.errors }}</div>
+        <div>{{ form.rut.label_tag }}{{ form.rut }}{{ form.rut.errors }}<small>{{ form.rut.help_text }}</small></div>
+        <div>{{ form.correo.label_tag }}{{ form.correo }}{{ form.correo.errors }}</div>
+        <div>{{ form.telefono.label_tag }}{{ form.telefono }}{{ form.telefono.errors }}</div>
+      </div>
+    </fieldset>
+    <fieldset class="datos-contratacion">
+      <legend>Fecha y ubicación de la obra</legend>
+      <div>{{ form.fecha.label_tag }}{{ form.fecha }}{{ form.fecha.errors }}</div>
+      <div>{{ form.direccion.label_tag }}{{ form.direccion }}{{ form.direccion.errors }}</div>
+      <div class="campos-dobles">
+        <div>{{ form.comuna.label_tag }}{{ form.comuna }}{{ form.comuna.errors }}</div>
+        <div>{{ form.region.label_tag }}{{ form.region }}{{ form.region.errors }}</div>
+      </div>
+      <div>{{ form.observaciones.label_tag }}{{ form.observaciones }}{{ form.observaciones.errors }}</div>
+    </fieldset>
+    <div class="campo-cantidad">
+      {{ form.cantidad.label_tag }}
+      <div class="selector-cantidad">
+        <button class="secundario" type="button" data-paso="-1" aria-label="Disminuir cantidad" hidden>−</button>
+        {{ form.cantidad }}
+        <button class="secundario" type="button" data-paso="1" aria-label="Aumentar cantidad" hidden>+</button>
+      </div>
+      {{ form.cantidad.errors }}
+    </div>
+    <fieldset class="datos-contratacion">
+      <legend>Documento de compra</legend>
+      {{ form.tipo_documento.label_tag }}{{ form.tipo_documento }}{{ form.tipo_documento.errors }}
+      <div data-facturacion>
+        <div>{{ form.razon_social.label_tag }}{{ form.razon_social }}{{ form.razon_social.errors }}</div>
+        <div>{{ form.rut_facturacion.label_tag }}{{ form.rut_facturacion }}{{ form.rut_facturacion.errors }}</div>
+        <div>{{ form.giro.label_tag }}{{ form.giro }}{{ form.giro.errors }}</div>
+        <div>{{ form.direccion_facturacion.label_tag }}{{ form.direccion_facturacion }}{{ form.direccion_facturacion.errors }}</div>
+      </div>
+    </fieldset>
+    <fieldset class="datos-contratacion">
+      <legend>Elige cómo pagar</legend>
+      {{ form.metodo_pago.errors }}
+      <div class="opciones-medios-pago">
+      {% for opcion in form.metodo_pago %}
+        <label class="medio-pago">
+          {{ opcion.tag }}
+          <span>
+            {% if opcion.data.value == 'webpay' %}
+              <img src="{% static 'buildcorp/pagos/webpay.png' %}" alt="Webpay" width="180" height="80">
+              <strong>Webpay</strong><small>Tarjetas de crédito, débito y prepago</small>
+            {% else %}
+              <img src="{% static 'buildcorp/pagos/transferencia.png' %}" alt="Transferencia bancaria" width="180" height="80">
+              <strong>Transferencia bancaria</strong><small>Confirmación de transferencia</small>
+            {% endif %}
+          </span>
+        </label>
+      {% endfor %}
+      </div>
+    </fieldset>
+  </section>
+  <aside class="panel panel-pago resumen-pago" aria-labelledby="titulo-resumen">
+    <h2 id="titulo-resumen">Resumen del pedido</h2>
+    <p class="linea-resumen"><span>{{ servicio.nombre }}</span><span>{{ servicio.tarifa_visible }} / {{ servicio.unidad }}</span></p>
+    <p class="total-pago"><span>Total a pagar</span><output id="total-demo" for="id_cantidad" data-tarifa="{{ servicio.tarifa|stringformat:'d' }}">{{ total_visible }}</output></p>
+    {% if bloqueado %}
+      <p class="mensaje error">Tu cuenta está bloqueada para nuevos arriendos. Contacta a BuildCorp.</p>
+    {% elif servicio.requiere_equipo and not servicio.disponibles %}
+      <p class="mensaje error">No quedan unidades disponibles. Revisa otro equipo en el catálogo.</p>
+    {% elif contratista %}
+      <button type="submit">Confirmar solicitud y pago</button>
+    {% elif not user.is_authenticated %}
+      <a class="boton" href="{% url 'login' %}?next={{ request.path|urlencode }}">Iniciar sesión para contratar</a>
+    {% else %}
+      <p>Esta cuenta no tiene un perfil de contratista. Puedes gestionar solicitudes desde bodega.</p>
+    {% endif %}
+    <p class="aviso-demo">Precios con IVA incluido. La reserva se confirma al aprobar el pago.</p>
+    <small class="nota-demostracion">Demostración académica. Los medios de pago se procesan localmente.</small>
+  </aside>
+</form>
+{% endblock %}
+{% block scripts %}<script src="{% static 'buildcorp/pago-demo.js' %}?v=2" defer></script>{% endblock %}

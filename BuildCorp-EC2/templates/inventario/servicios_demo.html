@@ -1,0 +1,41 @@
+<section class="seccion-servicios" id="servicios" aria-labelledby="titulo-servicios">
+  <div class="encabezado cabecera-seccion">
+    <div>
+      <p class="rotulo">Catálogo de arriendo</p>
+      <h2 id="titulo-servicios">Servicios de obra</h2>
+    </div>
+    <p>Elige herramientas, maquinaria o servicios para tu obra.</p>
+  </div>
+  <div class="tarjetas-servicios">
+    {% for servicio in servicios %}
+      <article class="tarjeta-servicio" id="servicio-{{ servicio.codigo }}">
+        <a class="imagen-servicio" href="{% url 'pago_simulado' servicio.codigo %}" aria-label="Ver {{ servicio.nombre }}">
+          <span class="foto-servicio foto-{{ servicio.grupo }}" aria-hidden="true"></span>
+        </a>
+        <div class="cuerpo-servicio">
+          <p class="rotulo">{{ servicio.categoria }}</p>
+          <h3><a href="{% url 'pago_simulado' servicio.codigo %}">{{ servicio.nombre }}</a></h3>
+          <p>{{ servicio.descripcion }}</p>
+          <div class="precio-fila">
+            <p class="precio">{{ servicio.tarifa_visible }} <span>por {{ servicio.unidad }}</span></p>
+            {% if servicio.requiere_equipo %}
+              {% with stock=servicio.disponibles %}
+                <p class="stock-publico{% if not stock %} sin-stock{% endif %}">{{ stock }} {% if stock == 1 %}unidad disponible{% else %}unidades disponibles{% endif %}</p>
+                {% if stock %}
+                  <a class="boton" href="{% url 'pago_simulado' servicio.codigo %}">Arrendar<span class="sr-only"> {{ servicio.nombre }}</span></a>
+                {% else %}
+                  <span class="etiqueta">Sin disponibilidad</span>
+                {% endif %}
+              {% endwith %}
+            {% else %}
+              <span class="stock-publico">Servicio por coordinar</span>
+              <a class="boton" href="{% url 'pago_simulado' servicio.codigo %}">Contratar<span class="sr-only"> {{ servicio.nombre }}</span></a>
+            {% endif %}
+          </div>
+        </div>
+      </article>
+    {% empty %}
+      <p class="panel">No encontramos servicios con ese nombre.</p>
+    {% endfor %}
+  </div>
+</section>

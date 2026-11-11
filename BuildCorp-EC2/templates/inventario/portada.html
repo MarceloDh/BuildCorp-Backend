@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% load static %}
+{% block titulo %}BuildCorp · Alquiler de herramientas{% endblock %}
+{% block contenido %}
+<section class="portada-obra" aria-label="Destacados de BuildCorp" data-carrusel>
+  <div class="portada-laminas" id="portada-laminas">
+    <article class="portada-lamina" data-lamina>
+      <div class="portada-texto">
+        <p class="rotulo">Herramientas y equipos de obra</p>
+        <h1>Alquiler de herramientas para obras</h1>
+        <p>Encuentra el equipo que necesitas y consulta tus préstamos, plazos y devoluciones desde tu cuenta.</p>
+        <div class="acciones">
+          <a class="boton boton-hero" href="{% url 'catalogo_publico' %}">Explorar catálogo <span aria-hidden="true">→</span></a>
+          {% if es_contratista %}
+            <a class="enlace-hero" href="{% url 'portal_contratista' %}">Mis préstamos</a>
+          {% elif puede_operar %}
+            <a class="enlace-hero" href="{% url 'inicio' %}">Operación de bodega</a>
+          {% elif not user.is_authenticated %}
+            <a class="enlace-hero" href="{% url 'login' %}">Ingresar a mi cuenta</a>
+          {% endif %}
+        </div>
+      </div>
+      <figure class="portada-foto">
+        <img src="{% static 'buildcorp/esfinges-taller.png' %}" width="1536" height="1024" fetchpriority="high" alt="Dos gatitos esfinge sobre una caja de herramientas junto a un casco de obra">
+        <figcaption>Los inspectores del taller</figcaption>
+      </figure>
+    </article>
+    <article class="portada-lamina portada-maquinaria" data-lamina hidden>
+      <div class="portada-texto">
+        <p class="rotulo">Maquinaria ligera</p>
+        <h2>Equipa tu próxima obra</h2>
+        <p>Revisa los equipos para compactación y mezclado, y elige cuántos días necesitas arrendarlos.</p>
+        <a class="boton boton-hero" href="{% url 'catalogo_publico' %}#servicio-maquinaria">Ver maquinaria <span aria-hidden="true">→</span></a>
+      </div>
+      <figure class="portada-foto portada-foto-producto">
+        <img src="{% static 'buildcorp/catalogo-productos.png' %}" width="2172" height="724" alt="Compactadora amarilla de placa">
+        <figcaption>Equipos de obra por día</figcaption>
+      </figure>
+    </article>
+    <article class="portada-lamina portada-traslado" data-lamina hidden>
+      <div class="portada-texto">
+        <p class="rotulo">Traslado a obra</p>
+        <h2>Tu equipo, directo a la obra</h2>
+        <p>Consulta el servicio de traslado y coordina con bodega dónde necesitas recibir tus herramientas.</p>
+        <a class="boton boton-hero" href="{% url 'catalogo_publico' %}#servicio-traslado">Ver servicio de traslado <span aria-hidden="true">→</span></a>
+      </div>
+      <figure class="portada-foto">
+        <img src="{% static 'buildcorp/esfinge.png' %}" width="1448" height="1086" alt="Gato esfinge junto a una caja de herramientas y un casco">
+        <figcaption>El supervisor de bodega</figcaption>
+      </figure>
+    </article>
+  </div>
+  <div class="portada-controles" data-controles hidden>
+    <button type="button" data-anterior aria-label="Banner anterior" aria-controls="portada-laminas">←</button>
+    <span data-posicion></span>
+    <button type="button" data-siguiente aria-label="Banner siguiente" aria-controls="portada-laminas">→</button>
+    <button type="button" data-pausa aria-controls="portada-laminas">Pausar</button>
+    <span class="sr-only" aria-live="polite" data-anuncio></span>
+  </div>
+</section>
+{% include "inventario/servicios_demo.html" %}
+{% include "inventario/guia_cliente.html" %}
+{% endblock %}
+{% block scripts %}<script src="{% static 'buildcorp/portada.js' %}" defer></script>{% endblock %}

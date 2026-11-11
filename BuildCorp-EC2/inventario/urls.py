@@ -1,0 +1,37 @@
+from django.urls import path
+
+from . import views
+
+urlpatterns = [
+    path("", views.portada, name="portada"),
+    path("registro/", views.registro, name="registro"),
+    path("catalogo/", views.catalogo_publico, name="catalogo_publico"),
+    path("catalogo/sugerencias/", views.sugerencias_busqueda, name="sugerencias_busqueda"),
+    path("catalogo/servicios/<slug:codigo>/arriendo/", views.pago_simulado, name="pago_simulado"),
+    path("catalogo/servicios/<slug:codigo>/simular-pago/", views.pago_simulado),
+    path("bodega/", views.inicio, name="inicio"),
+    path("mi-cuenta/", views.portal_contratista, name="portal_contratista"),
+    path("mi-cuenta/solicitudes/<uuid:referencia>/", views.solicitud_detalle, name="solicitud_detalle"),
+    path("mi-cuenta/solicitudes/<uuid:referencia>/<slug:documento>.pdf", views.solicitud_pdf, name="solicitud_pdf"),
+    path("mi-cuenta/solicitudes/<uuid:referencia>/cancelar/", views.solicitud_cancelar, name="solicitud_cancelar"),
+    path("bodega/solicitudes/", views.solicitudes_bodega, name="solicitudes_bodega"),
+    path("mi-cuenta/prestamos/<int:pk>/", views.prestamo_contratista, name="prestamo_contratista"),
+    path("herramientas/", views.activos, name="activos"),
+    path("herramientas/nueva/", views.activo_editar, name="activo_nuevo"),
+    path("herramientas/<int:pk>/", views.activo_detalle, name="activo_detalle"),
+    path("herramientas/<int:pk>/editar/", views.activo_editar, name="activo_editar"),
+    path("herramientas/<int:pk>/trasladar/", views.traslado, name="traslado"),
+    path("herramientas/<int:pk>/estado/", views.cambiar_baja, name="cambiar_baja"),
+    path("herramientas/<int:pk>/programar/", views.programar, name="programar"),
+    path("herramientas/<int:pk>/mantenimiento/<int:mantenimiento_id>/editar/", views.programar, name="editar_mantenimiento"),
+    path("registros/<slug:tipo>/", views.catalogo, name="catalogo"),
+    path("registros/<slug:tipo>/nuevo/", views.catalogo_editar, name="catalogo_nuevo"),
+    path("registros/<slug:tipo>/<int:pk>/editar/", views.catalogo_editar, name="catalogo_editar"),
+    path("registros/<slug:tipo>/<int:pk>/eliminar/", views.eliminar, name="eliminar"),
+    path("prestamos/", views.prestamos, name="prestamos"),
+    path("prestamos/entrega/", views.entrega, name="entrega"),
+    path("prestamos/<int:pk>/", views.prestamo_detalle, name="prestamo_detalle"),
+    path("prestamos/<int:pk>/devolucion/", views.devolucion, name="devolucion"),
+    path("mantenimiento/", views.mantenimientos, name="mantenimientos"),
+    path("mantenimiento/<int:pk>/<slug:accion>/", views.cambiar_mantenimiento, name="cambiar_mantenimiento"),
+]

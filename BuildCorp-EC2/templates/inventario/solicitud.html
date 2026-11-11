@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block titulo %}Mi solicitud · BuildCorp{% endblock %}
+{% block contenido %}
+<a class="regresar-cliente" href="{% if puede_operar %}{% url 'solicitudes_bodega' %}{% else %}{% url 'portal_contratista' %}{% endif %}">← Volver a solicitudes</a>
+<header class="cabecera-cliente">
+  <div><p class="rotulo">Solicitud registrada</p><h1>{{ solicitud.servicio }}</h1><p>{{ solicitud.estado_visible }}</p></div>
+  <strong>{{ total_visible }} CLP</strong>
+</header>
+<div class="panel">
+  <h2>{% if solicitud.pago_aprobado %}El pago se ha realizado con éxito{% else %}No se pudo completar el pago{% endif %}</h2>
+  <p>Medio seleccionado {{ solicitud.get_metodo_pago_display|default:"No registrado" }}.</p>
+  <div class="acciones">
+    <a class="boton" href="{% url 'solicitud_pdf' solicitud.referencia 'informe' %}">Descargar informe PDF</a>
+    {% if solicitud.tipo_documento == 'factura' and solicitud.pago_aprobado %}
+      <a class="boton secundario" href="{% url 'solicitud_pdf' solicitud.referencia 'factura' %}">Descargar factura PDF</a>
+    {% endif %}
+  </div>
+  <p>Referencia {{ solicitud.referencia }} · {{ solicitud.creada_en|date:"d/m/Y H:i" }}</p>
+  {% if solicitud.activo %}<p>Unidad asignada {{ solicitud.activo.codigo }} · {{ solicitud.activo.estado_visible }}</p>{% endif %}
+  {% if solicitud.prestamo.devuelto_en %}<p class="mensaje">Equipo devuelto el {{ solicitud.prestamo.devuelto_en|date:"d/m/Y H:i" }}.</p>{% endif %}
+  <dl class="ficha">
+    <div><dt>Contacto</dt><dd>{{ solicitud.nombre }} {{ solicitud.apellido }}</dd></div>
+    <div><dt>RUT</dt><dd>{{ solicitud.rut|default:"No registrado" }}</dd></div>
+    <div><dt>Correo</dt><dd>{{ solicitud.correo }}</dd></div>
+    <div><dt>Teléfono</dt><dd>{{ solicitud.telefono }}</dd></div>
+    <div><dt>Fecha solicitada</dt><dd>{{ solicitud.fecha|date:"d/m/Y" }}</dd></div>
+    <div><dt>Ubicación</dt><dd>{{ solicitud.direccion }}, {{ solicitud.comuna }}, {{ solicitud.region }}</dd></div>
+    <div><dt>Cantidad</dt><dd>{{ solicitud.cantidad }}</dd></div>
+  </dl>
+  {% if solicitud.observaciones %}<p><strong>Indicaciones</strong> {{ solicitud.observaciones }}</p>{% endif %}
+</div>
+{% if solicitud.tipo_documento == 'factura' %}
+<section class="panel">
+  <h2>Datos de facturación</h2>
+  <p>{{ solicitud.razon_social }} · {{ solicitud.rut_facturacion }}</p>
+  <p>{{ solicitud.giro }} · {{ solicitud.direccion_facturacion }}</p>
+  <p>Neto {{ neto_visible }} · IVA 19% {{ iva_visible }} · Total {{ total_visible }}</p>
+  <small class="nota-demostracion">Factura de demostración. Sin validez tributaria.</small>
+</section>
+{% endif %}
+{% if solicitud.estado == 'pendiente' %}
+<div class="acciones">
+  {% if puede_operar and solicitud.activo and solicitud.pago_aprobado %}
+    <a class="boton" href="{% url 'entrega' %}?solicitud={{ solicitud.referencia }}">Registrar entrega con firma</a>
+  {% endif %}
+  <form method="post" action="{% url 'solicitud_cancelar' solicitud.referencia %}">
+    {% csrf_token %}<button class="secundario">Cancelar solicitud y liberar unidad</button>
+  </form>
+</div>
+{% endif %}
+<aside class="panel ayuda-solicitud">
+  {% include "inventario/mascota_animada.html" with animacion="revision" %}
+  <div><h2>El equipo de bodega revisará tu solicitud</h2><p>Podrás consultar estos datos desde tu cuenta. Los préstamos y sus fechas de devolución aparecen cuando bodega registra la entrega.</p></div>
+</aside>
+{% endblock %}

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% load static %}
+{% block titulo %}{{ titulo }} · BuildCorp{% endblock %}
+{% block contenido %}
+<a href="{{ volver }}">Volver</a>
+<h1>{{ titulo }}</h1>
+{% if detalle %}<p>{{ detalle }}</p>{% endif %}
+<form method="post" class="panel campos">
+  {% csrf_token %}
+  {% for campo in form.hidden_fields %}
+    {% if campo.name != 'firma' %}{{ campo }}{{ campo.errors }}{% endif %}
+  {% endfor %}
+  {{ form.non_field_errors }}
+  {% for campo in form.visible_fields %}
+    <div>
+      {{ campo.label_tag }}
+      {{ campo }}
+      {{ campo.errors }}
+      {% if campo.help_text %}<small>{{ campo.help_text }}</small>{% endif %}
+    </div>
+  {% endfor %}
+  {% if form.firma %}
+    <div>
+      <label id="etiqueta-firma">Firma del responsable</label>
+      {{ form.firma }}
+      {{ form.firma.errors }}
+      <canvas id="firma" class="firma" width="640" height="200" aria-labelledby="etiqueta-firma">Dibuja la firma con el mouse o la pantalla táctil.</canvas>
+      <button class="secundario" type="button" id="borrar-firma">Borrar firma</button>
+    </div>
+  {% endif %}
+  <button>Guardar</button>
+</form>
+{% endblock %}
+{% block scripts %}{% if form.firma %}<script src="{% static 'buildcorp/firma.js' %}" defer></script>{% endif %}{% endblock %}

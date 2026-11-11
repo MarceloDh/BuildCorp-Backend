@@ -1,0 +1,83 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#6f2549">
+  <link rel="icon" type="image/png" href="{% static 'buildcorp/logo-gato-casco.png' %}">
+  <title>{% block titulo %}BuildCorp{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'buildcorp/fuentes.css' %}">
+  <link rel="stylesheet" href="{% static 'buildcorp/estilo.css' %}">
+  <link rel="stylesheet" href="{% static 'buildcorp/cliente.css' %}?v=2">
+</head>
+<body>
+<a class="saltar-contenido" href="#contenido-principal">Saltar al contenido</a>
+<header class="cabecera">
+  <div class="contenedor barra cabecera-superior">
+    <a class="marca" href="{% url 'portada' %}">
+      <img src="{% static 'buildcorp/logo-gato-casco.png' %}" width="44" height="44" alt="">
+      <span class="marca-nombre">Build<span>Corp</span></span>
+    </a>
+    <form class="buscador-cabecera" method="get" role="search" aria-label="Buscar en el catálogo" action="{% url 'catalogo_publico' %}">
+      <label class="sr-only" for="buscar-cabecera">Buscar herramientas y servicios</label>
+      <div class="buscador-entrada">
+        <input type="search" id="buscar-cabecera" name="q" value="{{ request.GET.q|default:'' }}" maxlength="120" placeholder="Buscar herramientas y servicios…" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="sugerencias-catalogo" data-sugerencias-url="{% url 'sugerencias_busqueda' %}">
+        <ul id="sugerencias-catalogo" class="sugerencias-catalogo" role="listbox" hidden></ul>
+        <span class="sr-only" aria-live="polite" data-busqueda-estado></span>
+      </div>
+      <button>Buscar</button>
+    </form>
+    {% if user.is_authenticated %}
+      <form class="cuenta" method="post" action="{% url 'logout' %}">
+        {% csrf_token %}
+        <span>{{ user.get_username }}</span>
+        <a href="{% url 'registro' %}">Crear cuenta</a>
+        <button class="secundario">Salir</button>
+      </form>
+    {% else %}
+      <div class="acciones"><a class="cuenta-enlace" href="{% url 'login' %}">Mi cuenta</a><a href="{% url 'registro' %}">Crear cuenta</a></div>
+    {% endif %}
+  </div>
+  <div class="franja-categorias">
+    <nav class="contenedor menu-categorias" aria-label="Catálogo">
+      <a href="{% url 'catalogo_publico' %}">Catálogo</a>
+      <a href="{% url 'catalogo_publico' %}?categoria=herramientas#servicios">Herramientas eléctricas</a>
+      <a href="{% url 'catalogo_publico' %}?categoria=maquinaria#servicios">Maquinaria ligera</a>
+      <a href="{% url 'catalogo_publico' %}?categoria=traslado#servicios">Traslado a obra</a>
+      {% if es_contratista %}<a href="{% url 'portal_contratista' %}">Mis préstamos</a>{% endif %}
+    </nav>
+  </div>
+  {% if puede_operar %}
+    <nav class="contenedor menu-operacion" aria-label="Operación de bodega">
+      <a href="{% url 'inicio' %}">Resumen</a>
+      <a href="{% url 'activos' %}">Inventario</a>
+      <a href="{% url 'prestamos' %}">Préstamos</a>
+      <a href="{% url 'solicitudes_bodega' %}">Solicitudes</a>
+      <a href="{% url 'mantenimientos' %}">Mantenimiento</a>
+      <a href="{% url 'catalogo' 'obras' %}">Obras</a>
+      <a href="{% url 'catalogo' 'bodegas' %}">Bodegas</a>
+      <a href="{% url 'catalogo' 'contratistas' %}">Contratistas</a>
+      <a href="{% url 'catalogo' 'servicios' %}">Servicios</a>
+    </nav>
+  {% endif %}
+</header>
+<main class="contenedor" id="contenido-principal" tabindex="-1">
+  {% for mensaje in messages %}<p class="mensaje {{ mensaje.tags }}" role="status">{{ mensaje }}</p>{% endfor %}
+  {% block contenido %}{% endblock %}
+</main>
+<footer class="pie">
+  <div class="contenedor pie-cliente">
+    <div><strong>BuildCorp</strong><p>Herramientas y equipos de obra</p></div>
+    <nav aria-label="Enlaces de BuildCorp">
+      <a href="{% url 'catalogo_publico' %}">Catálogo</a>
+      <a href="{% url 'portal_contratista' %}">Mis préstamos</a>
+      <a href="{% url 'portada' %}#ayuda">Preguntas frecuentes</a>
+    </nav>
+  </div>
+</footer>
+<script src="{% static 'buildcorp/busqueda.js' %}" defer></script>
+<script src="{% static 'buildcorp/mascotas.js' %}" defer></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

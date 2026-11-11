@@ -1,0 +1,5 @@
+{% load static %}
+<figure class="mascota-animada" data-mascota>
+  <img src="{% static 'buildcorp/gato-'|add:animacion|add:'.png' %}" data-estatica="{% static 'buildcorp/gato-'|add:animacion|add:'.png' %}" data-gif="{% static 'buildcorp/gato-'|add:animacion|add:'.gif' %}" width="240" height="320" loading="lazy" alt="Gato esfinge con casco de obra">
+  <button type="button" class="secundario" data-animar hidden>Animar mascota</button>
+</figure>

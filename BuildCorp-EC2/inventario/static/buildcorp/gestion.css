@@ -1,0 +1,5 @@
+:root { --font-family-primary: Poppins, system-ui, sans-serif; }
+#header { background: #6f2549; }
+#site-name a { color: #fff; display: inline-flex; align-items: center; gap: .45rem; }
+#site-name img { object-fit: contain; }
+div.breadcrumbs { background: #813557; }

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block contenido %}
+<h1>Mantenimiento</h1>
+<nav class="acciones" aria-label="Filtrar mantenimientos">
+  <a href="{% url 'mantenimientos' %}">Todos</a><a href="?estado=exigibles">Por realizar</a>
+  {% if puede_supervisar %}<a href="{% url 'activos' %}">Elegir herramienta para programar</a>{% endif %}
+</nav>
+<div class="tabla"><table>
+<thead><tr><th>Herramienta</th><th>Tarea</th><th>Fecha límite</th><th>Horas límite</th><th>Estado</th></tr></thead>
+<tbody>
+{% for registro in pagina %}
+  <tr><td><a href="{% url 'activo_detalle' registro.activo_id %}">{{ registro.activo }}</a></td><td>{{ registro.tarea }}</td><td>{{ registro.fecha_limite|date:"d/m/Y"|default:"—" }}</td><td>{{ registro.horas_limite|default_if_none:"—" }}</td><td>{{ registro.get_estado_display }}</td></tr>
+{% empty %}<tr><td colspan="5">No hay mantenimientos para mostrar.</td></tr>{% endfor %}
+</tbody>
+</table></div>
+{% include "inventario/paginacion.html" %}
+{% endblock %}

@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block contenido %}
+<a href="{% url 'activos' %}">Volver a herramientas</a>
+<h1>{{ activo }}</h1>
+<div class="panel">
+  <p><strong>{{ activo.estado_visible }}</strong> · {{ activo.bodega }} · {{ activo.horas_uso }} h acumuladas</p>
+  {% if activo.descripcion %}<p>{{ activo.descripcion }}</p>{% endif %}
+  <div class="acciones">
+    {% if activo.estado == 'disponible' %}<a class="boton" href="{% url 'entrega' %}?activo={{ activo.pk }}">Entregar</a>{% endif %}
+    {% if puede_supervisar %}
+      <a href="{% url 'activo_editar' activo.pk %}">Editar ficha</a>
+      {% if activo.estado == 'disponible' %}<a href="{% url 'traslado' activo.pk %}">Trasladar</a>{% endif %}
+      {% if not activo.dado_de_baja %}<a href="{% url 'programar' activo.pk %}">Programar mantenimiento</a>{% endif %}
+      {% if activo.estado == 'disponible' or activo.dado_de_baja %}
+        <form method="post" action="{% url 'cambiar_baja' activo.pk %}">
+          {% csrf_token %}
+          {% if activo.dado_de_baja %}
+            <button class="secundario" name="accion" value="reactivar">Reactivar</button>
+          {% else %}
+            <button class="secundario" name="accion" value="baja">Dar de baja</button>
+          {% endif %}
+        </form>
+      {% endif %}
+      {% if not prestamos and not mantenimientos and not traslados %}
+        <form method="post" action="{% url 'eliminar' 'activos' activo.pk %}">{% csrf_token %}<button class="secundario peligro">Eliminar</button></form>
+      {% endif %}
+    {% endif %}
+  </div>
+</div>
+<section class="panel">
+  <h2>Préstamos recientes</h2>
+  <ul class="registros">
+    {% for prestamo in prestamos %}
+      <li><a href="{% url 'prestamo_detalle' prestamo.pk %}">{{ prestamo.contratista.nombre }}</a> · {{ prestamo.entregado_en|date:"d/m/Y H:i" }} · {{ prestamo.estado_visible }}</li>
+    {% empty %}<li>Sin préstamos registrados.</li>{% endfor %}
+  </ul>
+</section>
+<section class="panel">
+  <h2>Mantenimientos recientes</h2>
+  <ul class="registros">
+  {% for registro in mantenimientos %}
+    <li>
+      <strong>{{ registro.tarea }}</strong> · {{ registro.get_estado_display }}
+      {% if registro.fecha_limite %} · {{ registro.fecha_limite|date:"d/m/Y" }}{% endif %}
+      {% if registro.horas_limite %} · {{ registro.horas_limite }} h acumuladas{% endif %}
+      {% if registro.observaciones %}<p>{{ registro.observaciones }}</p>{% endif %}
+      {% if puede_supervisar %}
+        <div class="acciones">
+          {% if registro.estado == 'programado' %}
+            <a href="{% url 'editar_mantenimiento' activo.pk registro.pk %}">Editar</a>
+            <form method="post" action="{% url 'cambiar_mantenimiento' registro.pk 'iniciar' %}">{% csrf_token %}<button class="secundario">Iniciar</button></form>
+          {% elif registro.estado == 'en_curso' %}
+            <form method="post" action="{% url 'cambiar_mantenimiento' registro.pk 'completar' %}">{% csrf_token %}<button class="secundario">Completar</button></form>
+          {% endif %}
+          {% if registro.estado == 'programado' or registro.estado == 'en_curso' %}
+            <form method="post" action="{% url 'cambiar_mantenimiento' registro.pk 'cancelar' %}">{% csrf_token %}<button class="secundario">Cancelar</button></form>
+          {% endif %}
+        </div>
+      {% endif %}
+    </li>
+  {% empty %}<li>Sin mantenimientos registrados.</li>{% endfor %}
+  </ul>
+</section>
+<section class="panel">
+  <h2>Traslados recientes</h2>
+  <ul class="registros">
+    {% for registro in traslados %}
+      <li>{{ registro.origen }} → {{ registro.destino }} · {{ registro.registrado_en|date:"d/m/Y H:i" }} · {{ registro.registrado_por }}</li>
+    {% empty %}<li>Sin traslados registrados.</li>{% endfor %}
+  </ul>
+</section>
+{% endblock %}

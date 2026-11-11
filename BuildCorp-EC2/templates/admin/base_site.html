@@ -1,0 +1,12 @@
+{% extends "admin/base.html" %}
+{% load static %}
+{% block title %}{{ title }} · Gestión BuildCorp{% endblock %}
+{% block extrastyle %}{{ block.super }}
+<link rel="stylesheet" href="{% static 'buildcorp/fuentes.css' %}">
+<link rel="stylesheet" href="{% static 'buildcorp/gestion.css' %}">
+{% endblock %}
+{% block extrahead %}{{ block.super }}<link rel="icon" type="image/png" href="{% static 'buildcorp/logo-gato-casco.png' %}">{% endblock %}
+{% block branding %}
+<div id="site-name"><a href="{% url 'admin:index' %}"><img src="{% static 'buildcorp/logo-gato-casco.png' %}" width="36" height="36" alt=""> BuildCorp · Gestión</a></div>
+{% endblock %}
+{% block nav-global %}{% endblock %}

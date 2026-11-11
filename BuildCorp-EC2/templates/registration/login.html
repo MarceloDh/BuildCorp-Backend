@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% load static %}
+{% block titulo %}Acceso · BuildCorp{% endblock %}
+{% block contenido %}
+<section class="panel acceso acceso-cliente" aria-labelledby="titulo-acceso">
+  <div class="acceso-formulario">
+    <p class="rotulo">Área de clientes</p>
+    <h1 id="titulo-acceso">Ingreso a BuildCorp</h1>
+    <p>Entra para consultar tus equipos, plazos y devoluciones.</p>
+    <form method="post" class="campos">
+      {% csrf_token %}
+      {{ form.non_field_errors }}
+      <div>
+        {{ form.username.label_tag }}{{ form.username }}{{ form.username.errors }}
+      </div>
+      <div>
+        {{ form.password.label_tag }}
+        <div class="campo-clave">
+          {{ form.password }}
+          <button type="button" class="secundario" data-ver-clave aria-controls="{{ form.password.id_for_label }}" hidden>Mostrar</button>
+        </div>
+        {{ form.password.errors }}
+      </div>
+      <input type="hidden" name="next" value="{{ next }}">
+      <button class="ingresar-cliente">Ingresar</button>
+    </form>
+    <p class="ayuda-acceso">¿Primera vez en BuildCorp? <a href="{% url 'registro' %}">Crear cuenta de contratista</a>.</p>
+  </div>
+  <figure class="acceso-lateral">
+    <img class="acceso-foto" src="{% static 'buildcorp/esfinge.png' %}" width="1448" height="1086" alt="">
+    <figcaption>El supervisor de bodega</figcaption>
+  </figure>
+</section>
+{% endblock %}
+{% block scripts %}<script src="{% static 'buildcorp/acceso.js' %}" defer></script>{% endblock %}

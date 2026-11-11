@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% load static %}
+{% block titulo %}Mis préstamos · BuildCorp{% endblock %}
+{% block contenido %}
+<header class="cabecera-cliente">
+  <div>
+    <p class="rotulo">Mi cuenta</p>
+    <h1>Mis préstamos</h1>
+    <p>{{ contratista.nombre }}</p>
+  </div>
+  <a class="boton secundario" href="{% url 'catalogo_publico' %}">Explorar catálogo <span aria-hidden="true">→</span></a>
+</header>
+{% if contratista.bloqueado_manual %}
+  <p class="mensaje error">Tu cuenta está bloqueada para nuevos arriendos. Contacta a BuildCorp.{% if contratista.motivo_bloqueo %} {{ contratista.motivo_bloqueo }}{% endif %}</p>
+{% endif %}
+{% if vencidos %}
+  <p class="mensaje error" role="status">Tienes {{ vencidos }} {% if vencidos == 1 %}devolución vencida{% else %}devoluciones vencidas{% endif %}. Los nuevos préstamos quedan bloqueados hasta que bodega registre las devoluciones pendientes.</p>
+{% elif totales.todos %}
+  <p class="mensaje" role="status">Estás al día con tus devoluciones.</p>
+{% endif %}
+<nav class="resumen-cliente" aria-label="Filtrar préstamos por estado">
+  <a href="{% url 'portal_contratista' %}"{% if not estado %} aria-current="page"{% endif %}><span>Todos</span><strong>{{ totales.todos }}</strong></a>
+  <a href="?estado=vigentes"{% if estado == 'vigentes' %} aria-current="page"{% endif %}><span>Vigentes</span><strong>{{ totales.vigentes }}</strong></a>
+  <a href="?estado=vencidos"{% if estado == 'vencidos' %} aria-current="page"{% endif %}><span>Vencidos</span><strong>{{ totales.vencidos }}</strong></a>
+  <a href="?estado=devueltos"{% if estado == 'devueltos' %} aria-current="page"{% endif %}><span>Devueltos</span><strong>{{ totales.devueltos }}</strong></a>
+</nav>
+{% if solicitudes %}
+<section class="panel">
+  <h2>Mis solicitudes de servicios</h2>
+  <ul class="registros">
+  {% for solicitud in solicitudes %}
+    <li><a href="{% url 'solicitud_detalle' solicitud.referencia %}">{{ solicitud.servicio }}</a> · {{ solicitud.fecha|date:"d/m/Y" }} · {{ solicitud.estado_visible }}</li>
+  {% endfor %}
+  </ul>
+</section>
+{% endif %}
+{% if pagina.object_list %}
+  <div class="lista-prestamos">
+  {% for prestamo in pagina %}
+    <article class="panel tarjeta-prestamo">
+      <div>
+        <span class="etiqueta{% if prestamo.vencido %} etiqueta-vencida{% endif %}">{{ prestamo.estado_visible }}</span>
+        <h2>{{ prestamo.activo.nombre }}</h2>
+        <p>{{ prestamo.bodega }}</p>
+      </div>
+      <dl class="fechas-prestamo">
+        <div><dt>Entrega</dt><dd>{{ prestamo.entregado_en|date:"d/m/Y H:i" }}</dd></div>
+        {% if prestamo.devuelto_en %}
+          <div><dt>Devuelto</dt><dd>{{ prestamo.devuelto_en|date:"d/m/Y H:i" }}</dd></div>
+        {% else %}
+          <div><dt>Devolver antes de</dt><dd>{{ prestamo.vence_en|date:"d/m/Y H:i" }}</dd></div>
+        {% endif %}
+      </dl>
+      <a class="boton secundario" href="{% url 'prestamo_contratista' prestamo.pk %}">Ver detalle<span class="sr-only"> de {{ prestamo.activo.nombre }}</span></a>
+    </article>
+  {% endfor %}
+  </div>
+  {% include "inventario/paginacion.html" %}
+{% else %}
+  <section class="panel vacio-cliente">
+    <img src="{% static 'buildcorp/gato-ayudante.png' %}" width="160" height="160" alt="">
+    <div>
+      <h2>{% if estado %}No hay préstamos en este estado{% else %}Todavía no tienes préstamos registrados{% endif %}</h2>
+      {% if estado %}
+        <a href="{% url 'portal_contratista' %}">Ver todos mis préstamos</a>
+      {% else %}
+        <p>Cuando bodega registre tu primera entrega, verás aquí el equipo y la fecha de devolución.</p>
+        <a href="{% url 'catalogo_publico' %}">Ver equipos y servicios <span aria-hidden="true">→</span></a>
+      {% endif %}
+    </div>
+  </section>
+{% endif %}
+{% endblock %}

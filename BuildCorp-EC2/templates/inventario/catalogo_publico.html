@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block titulo %}Catálogo · BuildCorp{% endblock %}
+{% block contenido %}
+<div class="cabecera-catalogo">
+  <p class="rotulo">Equipos para tu próxima obra</p>
+  <h1>Catálogo de herramientas</h1>
+  <p>Explora los servicios y consulta los equipos publicados por bodega.</p>
+</div>
+<div class="catalogo-filtros">
+  <nav aria-label="Filtrar servicios por categoría" class="filtros-cliente">
+    <a href="{% querystring categoria=None pagina=None %}#servicios"{% if not categoria %} aria-current="page"{% endif %}>Todos los servicios</a>
+    {% for item in categorias %}
+      <a href="{% querystring categoria=item.codigo pagina=None %}#servicios"{% if categoria == item.codigo %} aria-current="page"{% endif %}>{{ item.categoria }}</a>
+    {% endfor %}
+  </nav>
+  {% if q %}<p>Resultados para «{{ q }}». <a href="{% url 'catalogo_publico' %}">Limpiar búsqueda</a></p>{% endif %}
+</div>
+{% include "inventario/servicios_demo.html" %}
+<section class="seccion-servicios" aria-labelledby="equipos-publicados">
+  <h2 id="equipos-publicados">Equipos publicados</h2>
+  <p>Confirma la disponibilidad y coordina la entrega con bodega.</p>
+  <form class="acciones" method="get" role="search">
+    {% if categoria %}<input type="hidden" name="categoria" value="{{ categoria }}">{% endif %}
+    <label for="buscar-equipo">Nombre de la herramienta</label>
+    <input type="search" id="buscar-equipo" name="q" value="{{ q }}" maxlength="120">
+    <button>Buscar</button>
+  </form>
+  <ul class="catalogo-publico">
+    {% for nombre in pagina %}
+      <li class="panel"><h3>{{ nombre }}</h3></li>
+    {% empty %}
+      <li class="panel">{% if q %}No se encontraron herramientas con ese nombre.{% else %}Todavía no hay herramientas publicadas en el catálogo.{% endif %}</li>
+    {% endfor %}
+  </ul>
+  {% include "inventario/paginacion.html" %}
+</section>
+{% endblock %}

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block titulo %}Detalle del préstamo · BuildCorp{% endblock %}
+{% block contenido %}
+<a class="regresar-cliente" href="{% url 'portal_contratista' %}">← Volver a mis préstamos</a>
+<div class="cabecera-cliente detalle-prestamo">
+  <div><p class="rotulo">Detalle del préstamo</p><h1>{{ prestamo.activo.nombre }}</h1></div>
+  <span class="etiqueta{% if prestamo.vencido %} etiqueta-vencida{% endif %}">{{ prestamo.estado_visible }}</span>
+</div>
+<div class="panel detalle-cliente">
+  <h2>Entrega y devolución</h2>
+  <dl class="ficha">
+    <div><dt>Bodega</dt><dd>{{ prestamo.bodega }}</dd></div>
+    <div><dt>Entregado</dt><dd>{{ prestamo.entregado_en|date:"d/m/Y H:i" }}</dd></div>
+    <div><dt>Devolver antes de</dt><dd>{{ prestamo.vence_en|date:"d/m/Y H:i" }}</dd></div>
+    {% if prestamo.devuelto_en %}
+      <div><dt>Devuelto</dt><dd>{{ prestamo.devuelto_en|date:"d/m/Y H:i" }}</dd></div>
+      <div><dt>Horas de uso</dt><dd>{{ prestamo.horas_utilizadas }}</dd></div>
+    {% endif %}
+  </dl>
+</div>
+{% if prestamo.vencido %}<p class="mensaje error">Coordina la devolución con la bodega que te entregó la herramienta.</p>{% endif %}
+{% endblock %}
