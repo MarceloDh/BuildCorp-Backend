@@ -17,6 +17,7 @@ rutas = [
     path("acceso/", AccesoBuildCorp.as_view(), name="login"),
     path("salir/", auth_views.LogoutView.as_view(), name="logout"),
     path(settings.ADMIN_PATH, admin.site.urls),
+    path("api/v4/", include("inventario.api_v4")),
     path("api/", include(router.urls)),
     path("", include("inventario.urls")),
 ]

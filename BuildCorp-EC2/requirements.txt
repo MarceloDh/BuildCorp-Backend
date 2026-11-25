@@ -1,5 +1,8 @@
 Django>=5.2,<5.3
 djangorestframework>=3.16,<3.18
+djangorestframework-simplejwt>=5.5,<6
+django-cors-headers>=4.7,<5
+boto3>=1.39,<2
 psycopg[binary]>=3.2,<4
 python-dotenv>=1.1,<2
 Pillow>=11,<13

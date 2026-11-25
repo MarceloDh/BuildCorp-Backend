@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="es-CL">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>BuildCorp | Control de inventario</title>
+  <link rel="stylesheet" href="estilos.css">
+  <script src="config.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="barra">
+    <div class="marca"><span class="sello" aria-hidden="true">B</span> BuildCorp</div>
+    <div id="cuenta" hidden><span id="usuario"></span> <button id="salir" type="button">Cerrar sesión</button></div>
+  </header>
+  <main>
+    <section id="acceso" class="acceso">
+      <h1>Control de inventario</h1>
+      <p>Acceso para Supervisión y Bodega.</p>
+      <form id="login">
+        <label>Usuario <input name="username" autocomplete="username" required></label>
+        <label>Contraseña <input name="password" type="password" autocomplete="current-password" required></label>
+        <button class="principal" type="submit">Iniciar sesión</button>
+      </form>
+    </section>
+    <section id="inventario" hidden>
+      <nav id="navegacion" aria-label="Secciones de inventario"></nav>
+      <div class="encabezado">
+        <h1 id="titulo" tabindex="-1">Inventario</h1>
+        <button id="nuevo" class="principal" type="button" hidden>Nuevo registro</button>
+      </div>
+      <div id="panel-formulario" class="panel" hidden>
+        <h2 id="titulo-formulario">Registro de inventario</h2>
+        <form id="registro">
+          <div id="campos"></div>
+          <div class="acciones">
+            <button class="principal" type="submit">Guardar</button>
+            <button id="cancelar" type="button">Cancelar</button>
+          </div>
+        </form>
+      </div>
+      <div class="tabla"><table><thead id="columnas"><tr><th scope="col">ID</th></tr></thead><tbody id="filas"></tbody></table></div>
+      <div class="paginacion">
+        <button id="anterior" type="button" disabled>Anterior</button>
+        <span id="pagina"></span>
+        <button id="siguiente" type="button" disabled>Siguiente</button>
+      </div>
+      <div class="recursos">
+        <button id="guia" type="button">Preparar descarga de guía</button>
+        <a id="descarga" hidden rel="noreferrer" target="_blank">Descargar guía de inventario</a>
+      </div>
+    </section>
+    <p id="estado" role="status" aria-live="polite"></p>
+  </main>
+</body>
+</html>

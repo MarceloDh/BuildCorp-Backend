@@ -161,6 +161,7 @@ def programar(*, activo, tarea, fecha_limite, horas_limite, observaciones, regis
     mantenimiento.observaciones = observaciones
     mantenimiento.full_clean()
     mantenimiento.save()
+    return mantenimiento
 
 
 @transaction.atomic

@@ -53,6 +53,7 @@ class AccesoBuildCorp(LoginView):
         return reverse("portada")
 
 
+@require_safe
 def portada(request):
     return render(request, "inventario/portada.html", {"servicios": Servicio.objects.filter(publicado=True)[:3]})
 
@@ -188,6 +189,7 @@ def obtener_solicitud(request, referencia):
 
 @login_required
 @never_cache
+@require_safe
 def solicitud_detalle(request, referencia):
     solicitud = obtener_solicitud(request, referencia)
     return render(request, "inventario/solicitud.html", {
@@ -230,6 +232,7 @@ def solicitud_cancelar(request, referencia):
 
 
 @login_required
+@require_safe
 def solicitudes_bodega(request):
     exigir_acceso(request.user)
     return render(request, "inventario/solicitudes.html", {
@@ -283,6 +286,7 @@ def prestamo_contratista(request, pk):
 
 
 @login_required
+@require_safe
 def inicio(request):
     exigir_acceso(request.user)
     vencidos = Prestamo.objects.vencidos().select_related("activo", "contratista", "bodega")
@@ -298,6 +302,7 @@ def inicio(request):
 
 
 @login_required
+@require_safe
 def activos(request):
     exigir_acceso(request.user)
     registros = Activo.objects.select_related("bodega__obra")
@@ -308,6 +313,7 @@ def activos(request):
 
 
 @login_required
+@require_safe
 def activo_detalle(request, pk):
     exigir_acceso(request.user)
     activo = get_object_or_404(Activo.objects.select_related("bodega__obra"), pk=pk)
@@ -348,6 +354,7 @@ def activo_editar(request, pk=None):
 
 
 @login_required
+@require_safe
 def catalogo(request, tipo):
     exigir_acceso(request.user)
     if tipo not in CATALOGOS:
@@ -407,6 +414,7 @@ def eliminar(request, tipo, pk):
 
 
 @login_required
+@require_safe
 def prestamos(request):
     exigir_acceso(request.user)
     registros = Prestamo.objects.select_related("activo", "contratista", "bodega__obra")
@@ -419,6 +427,7 @@ def prestamos(request):
 
 
 @login_required
+@require_safe
 def prestamo_detalle(request, pk):
     exigir_acceso(request.user)
     prestamo = get_object_or_404(
@@ -512,6 +521,7 @@ def cambiar_baja(request, pk):
 
 
 @login_required
+@require_safe
 def mantenimientos(request):
     exigir_acceso(request.user)
     registros = Mantenimiento.objects.select_related("activo")

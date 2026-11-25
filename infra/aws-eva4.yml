@@ -1,0 +1,356 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: BuildCorp EVA4 - laboratorio temporal con EC2, HTTP API, S3 y RDS
+
+Parameters:
+  LinuxAmi:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
+  PerfilLaboratorio:
+    Type: String
+    Default: LabInstanceProfile
+  RolLaboratorio:
+    Type: String
+    Default: LabRole
+
+Resources:
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.42.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags: [{ Key: Name, Value: !Sub '${AWS::StackName}-vpc' }]
+  Internet:
+    Type: AWS::EC2::InternetGateway
+  VpcInternet:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref Vpc
+      InternetGatewayId: !Ref Internet
+  RutasPublicas:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+  InternetRoute:
+    Type: AWS::EC2::Route
+    DependsOn: VpcInternet
+    Properties:
+      RouteTableId: !Ref RutasPublicas
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref Internet
+  PublicaA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.42.1.0/24
+      AvailabilityZone: !Select [0, !GetAZs '']
+      MapPublicIpOnLaunch: true
+      Tags: [{ Key: Name, Value: EVA4-servicios-A }]
+  PublicaB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.42.2.0/24
+      AvailabilityZone: !Select [1, !GetAZs '']
+      MapPublicIpOnLaunch: true
+      Tags: [{ Key: Name, Value: EVA4-servicios-B }]
+  AsociarPublicaA:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RutasPublicas
+      SubnetId: !Ref PublicaA
+  AsociarPublicaB:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RutasPublicas
+      SubnetId: !Ref PublicaB
+  PrivadaA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.42.11.0/24
+      AvailabilityZone: !Select [0, !GetAZs '']
+      Tags: [{ Key: Name, Value: EVA4-datos-A }]
+  PrivadaB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.42.12.0/24
+      AvailabilityZone: !Select [1, !GetAZs '']
+      Tags: [{ Key: Name, Value: EVA4-datos-B }]
+  GrupoLink:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: API Gateway VPC Link
+      VpcId: !Ref Vpc
+  GrupoALB:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Solo HTTP del VPC Link
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - { IpProtocol: tcp, FromPort: 80, ToPort: 80, SourceSecurityGroupId: !Ref GrupoLink }
+  GrupoFrontend:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Solo HTTP del ALB a la interfaz
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - { IpProtocol: tcp, FromPort: 80, ToPort: 80, SourceSecurityGroupId: !Ref GrupoALB }
+  GrupoBackend:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Solo HTTP del ALB a la API
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - { IpProtocol: tcp, FromPort: 80, ToPort: 80, SourceSecurityGroupId: !Ref GrupoALB }
+  GrupoRds:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Solo PostgreSQL desde backend
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - { IpProtocol: tcp, FromPort: 5432, ToPort: 5432, SourceSecurityGroupId: !Ref GrupoBackend }
+  SubredesRds:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subredes privadas para PostgreSQL
+      SubnetIds: [!Ref PrivadaA, !Ref PrivadaB]
+  Datos:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      DBInstanceIdentifier: !Sub '${AWS::StackName}-pg'
+      DBInstanceClass: db.t3.micro
+      AllocatedStorage: '20'
+      StorageType: gp2
+      Engine: postgres
+      DBName: buildcorp
+      MasterUsername: administrador
+      ManageMasterUserPassword: true
+      DBSubnetGroupName: !Ref SubredesRds
+      VPCSecurityGroups: [!Ref GrupoRds]
+      PubliclyAccessible: false
+      StorageEncrypted: true
+      MultiAZ: false
+      BackupRetentionPeriod: 7
+      DeleteAutomatedBackups: true
+      DeletionProtection: false
+      MonitoringInterval: 0
+  Recursos:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault: { SSEAlgorithm: AES256 }
+      OwnershipControls:
+        Rules: [{ ObjectOwnership: BucketOwnerEnforced }]
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+  PermisosRecursos:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref Recursos
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: UsarTLS
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource: [!GetAtt Recursos.Arn, !Sub '${Recursos.Arn}/*']
+            Condition: { Bool: { 'aws:SecureTransport': 'false' } }
+          - Sid: PermitirLecturasAplicacion
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${RolLaboratorio}'
+            Action: s3:GetObject
+            Resource:
+              - !Sub '${Recursos.Arn}/recursos/guia-inventario.txt'
+              - !Sub '${Recursos.Arn}/artefactos/buildcorp-eva4.tar.gz'
+  Front:
+    Type: AWS::EC2::Instance
+    DependsOn: [InternetRoute, AsociarPublicaA]
+    Properties:
+      ImageId: !Ref LinuxAmi
+      InstanceType: t3.micro
+      IamInstanceProfile: !Ref PerfilLaboratorio
+      SubnetId: !Ref PublicaA
+      SecurityGroupIds: [!Ref GrupoFrontend]
+      CreditSpecification: { CPUCredits: standard }
+      MetadataOptions: { HttpTokens: required, HttpPutResponseHopLimit: 1 }
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs: { VolumeSize: 8, VolumeType: gp3, Encrypted: true, DeleteOnTermination: true }
+      Tags: [{ Key: Name, Value: !Sub '${AWS::StackName}-frontend' }]
+  Back:
+    Type: AWS::EC2::Instance
+    DependsOn: [InternetRoute, AsociarPublicaA]
+    Properties:
+      ImageId: !Ref LinuxAmi
+      InstanceType: t3.micro
+      IamInstanceProfile: !Ref PerfilLaboratorio
+      SubnetId: !Ref PublicaA
+      SecurityGroupIds: [!Ref GrupoBackend]
+      CreditSpecification: { CPUCredits: standard }
+      MetadataOptions: { HttpTokens: required, HttpPutResponseHopLimit: 1 }
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs: { VolumeSize: 8, VolumeType: gp3, Encrypted: true, DeleteOnTermination: true }
+      Tags: [{ Key: Name, Value: !Sub '${AWS::StackName}-backend' }]
+  Balanceador:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Scheme: internal
+      Type: application
+      SecurityGroups: [!Ref GrupoALB]
+      Subnets: [!Ref PublicaA, !Ref PublicaB]
+  ObjetivoFront:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      VpcId: !Ref Vpc
+      Protocol: HTTP
+      Port: 80
+      TargetType: instance
+      Targets: [{ Id: !Ref Front }]
+      HealthCheckPath: /salud-alb
+      HealthCheckIntervalSeconds: 10
+  ObjetivoBack:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      VpcId: !Ref Vpc
+      Protocol: HTTP
+      Port: 80
+      TargetType: instance
+      Targets: [{ Id: !Ref Back }]
+      HealthCheckPath: /salud-alb
+      HealthCheckIntervalSeconds: 10
+  Listener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref Balanceador
+      Protocol: HTTP
+      Port: 80
+      DefaultActions: [{ Type: forward, TargetGroupArn: !Ref ObjetivoFront }]
+  ReglaApi:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref Listener
+      Priority: 10
+      Conditions:
+        - Field: path-pattern
+          PathPatternConfig: { Values: ['/api/v4/*'] }
+      Actions: [{ Type: forward, TargetGroupArn: !Ref ObjetivoBack }]
+  Gateway:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub '${AWS::StackName}-http'
+      ProtocolType: HTTP
+  Link:
+    Type: AWS::ApiGatewayV2::VpcLink
+    Properties:
+      Name: !Sub '${AWS::StackName}-link'
+      SecurityGroupIds: [!Ref GrupoLink]
+      SubnetIds: [!Ref PublicaA, !Ref PublicaB]
+  Integracion:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref Gateway
+      ConnectionType: VPC_LINK
+      ConnectionId: !Ref Link
+      IntegrationType: HTTP_PROXY
+      IntegrationMethod: ANY
+      IntegrationUri: !Ref Listener
+      PayloadFormatVersion: '1.0'
+      RequestParameters: { 'overwrite:path': '$request.path' }
+  RutaRaiz:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref Gateway
+      RouteKey: GET /
+      Target: !Sub 'integrations/${Integracion}'
+  RutaFrontend:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref Gateway
+      RouteKey: GET /{archivo}
+      Target: !Sub 'integrations/${Integracion}'
+  RutaApi:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref Gateway
+      RouteKey: ANY /api/v4/{proxy+}
+      Target: !Sub 'integrations/${Integracion}'
+  IntegracionSalud:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref Gateway
+      ConnectionType: VPC_LINK
+      ConnectionId: !Ref Link
+      IntegrationType: HTTP_PROXY
+      IntegrationMethod: GET
+      IntegrationUri: !Ref Listener
+      PayloadFormatVersion: '1.0'
+      RequestParameters: { 'overwrite:path': '/api/v4/salud/' }
+  RutaSalud:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref Gateway
+      RouteKey: GET /api/v4/salud
+      Target: !Sub 'integrations/${IntegracionSalud}'
+  RegistroApi:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/buildcorp/${AWS::StackName}/http'
+      RetentionInDays: 1
+  Stage:
+    Type: AWS::ApiGatewayV2::Stage
+    DependsOn: [RutaRaiz, RutaFrontend, RutaApi, RutaSalud, ReglaApi]
+    Properties:
+      ApiId: !Ref Gateway
+      StageName: $default
+      AutoDeploy: true
+      DefaultRouteSettings: { ThrottlingRateLimit: 30, ThrottlingBurstLimit: 60 }
+      RouteSettings:
+        'GET /api/v4/salud': { ThrottlingRateLimit: 2, ThrottlingBurstLimit: 5 }
+      AccessLogSettings:
+        DestinationArn: !GetAtt RegistroApi.Arn
+        Format: '{"id":"$context.requestId","route":"$context.routeKey","status":"$context.status","latency":"$context.responseLatency"}'
+  Tema:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub '${AWS::StackName}-operacion'
+  AlarmaCpu:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${AWS::StackName}-backend-cpu'
+      Namespace: AWS/EC2
+      MetricName: CPUUtilization
+      Dimensions: [{ Name: InstanceId, Value: !Ref Back }]
+      AlarmActions: [!Ref Tema]
+      Statistic: Average
+      Threshold: 70
+      ComparisonOperator: GreaterThanThreshold
+      Period: 300
+      EvaluationPeriods: 2
+      TreatMissingData: missing
+
+Outputs:
+  ApiId: { Value: !Ref Gateway }
+  Url: { Value: !GetAtt Gateway.ApiEndpoint }
+  Bucket: { Value: !Ref Recursos }
+  Frontend: { Value: !Ref Front }
+  Backend: { Value: !Ref Back }
+  GrupoBackend: { Value: !Ref GrupoBackend }
+  GrupoRds: { Value: !Ref GrupoRds }
+  BaseDatos: { Value: !Ref Datos }
+  EndpointRds: { Value: !GetAtt Datos.Endpoint.Address }
+  SecretoRds: { Value: !GetAtt Datos.MasterUserSecret.SecretArn }
+  VpcLink: { Value: !Ref Link }
+  Balanceador: { Value: !Ref Balanceador }
+  TargetFrontend: { Value: !Ref ObjetivoFront }
+  TargetBackend: { Value: !Ref ObjetivoBack }

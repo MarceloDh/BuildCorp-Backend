@@ -1,4 +1,8 @@
-# BuildCorp · Evaluación 3 de Desarrollo Backend
+# BuildCorp · Programación Backend
+
+La [guía de Evaluación 4](EVA4.md) describe el frontend separado, la API con JWT, las pruebas y el despliegue temporal en AWS. La documentación de la implementación anterior sigue a continuación.
+
+## Evaluación 3
 
 Sistema de arriendo y control de herramientas para obras de construcción. Proyecto 4 de INACAP.
 

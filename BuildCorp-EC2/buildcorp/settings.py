@@ -1,4 +1,5 @@
 import os
+from datetime import timedelta
 from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
@@ -31,14 +32,28 @@ APP_PREFIX = os.getenv("APP_PREFIX", "").strip("/")
 if APP_PREFIX:
     APP_PREFIX += "/"
 HTTPS = os.getenv("HTTPS", "0") == "1"
+EVA4_AWS = os.getenv("EVA4_AWS", "0") == "1"
+JWT_SIGNING_KEY = os.getenv("JWT_SIGNING_KEY") or SECRET_KEY
+DB_SSLMODE = os.getenv("DB_SSLMODE", "prefer")
+DB_SSLROOTCERT = os.getenv("DB_SSLROOTCERT")
+RECURSOS_BUCKET = os.getenv("RECURSOS_BUCKET", "")
+RECURSOS_REGION = os.getenv("RECURSOS_REGION", "us-east-1")
+if EVA4_AWS and (
+    DEBUG or not HTTPS or not RECURSOS_BUCKET or APP_PREFIX
+    or DB_SSLMODE != "verify-full" or not DB_SSLROOTCERT or not os.getenv("DB_PASSWORD")
+    or not os.getenv("JWT_SIGNING_KEY") or len(JWT_SIGNING_KEY) < 32
+    or len(SECRET_KEY) < 50 or JWT_SIGNING_KEY == SECRET_KEY
+):
+    raise ImproperlyConfigured("Revisa HTTPS, PostgreSQL TLS, S3 y las claves de BuildCorp EVA4.")
 
 INSTALLED_APPS = [
     "django.contrib.admin", "django.contrib.auth", "django.contrib.contenttypes",
     "django.contrib.sessions", "django.contrib.messages", "django.contrib.staticfiles",
-    "rest_framework", "inventario",
+    "rest_framework", "corsheaders", "inventario",
 ]
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -74,6 +89,10 @@ elif db_engine == "postgresql":
         "PASSWORD": os.getenv("DB_PASSWORD", ""),
         "HOST": os.getenv("DB_HOST", "127.0.0.1"),
         "PORT": os.getenv("DB_PORT", "5432"),
+        "OPTIONS": {
+            "sslmode": DB_SSLMODE,
+            **({"sslrootcert": DB_SSLROOTCERT} if DB_SSLROOTCERT else {}),
+        },
     }}
 else:
     raise ImproperlyConfigured("Configura PostgreSQL para producción.")
@@ -84,6 +103,13 @@ AUTH_PASSWORD_VALIDATORS = [
         "UserAttributeSimilarityValidator", "MinimumLengthValidator",
         "CommonPasswordValidator", "NumericPasswordValidator",
     )
+]
+PASSWORD_HASHERS = [
+    "django.contrib.auth.hashers.PBKDF2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher",
+    "django.contrib.auth.hashers.Argon2PasswordHasher",
+    "django.contrib.auth.hashers.BCryptSHA256PasswordHasher",
+    "django.contrib.auth.hashers.ScryptPasswordHasher",
 ]
 LANGUAGE_CODE = "es-cl"
 TIME_ZONE = "America/Santiago"
@@ -110,3 +136,16 @@ REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 25,
 }
+SIMPLE_JWT = {
+    "SIGNING_KEY": JWT_SIGNING_KEY,
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=5),
+    "REFRESH_TOKEN_LIFETIME": timedelta(minutes=30),
+    "ISSUER": "buildcorp",
+    "AUDIENCE": "buildcorp-inventario",
+}
+CORS_ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv("CORS_ALLOWED_ORIGINS", "http://127.0.0.1:5173" if DEBUG else "").split(",")
+    if origin.strip()
+]
+CORS_URLS_REGEX = rf"^/{APP_PREFIX}api/v4/"

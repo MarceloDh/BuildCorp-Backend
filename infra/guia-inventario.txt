@@ -1,0 +1,12 @@
+BUILDCORP
+Guía de inventario
+
+1. En Obras, registra la obra con su nombre y dirección.
+2. En Bodegas, crea una bodega y vincúlala a una obra.
+3. En Herramientas, usa un código único y selecciona la bodega.
+4. En Mantenimientos, programa una tarea con fecha límite o umbral de horas.
+5. Para conservar la trazabilidad de los préstamos y traslados, utiliza
+   los flujos de operación existentes de BuildCorp.
+
+Bodega tiene acceso de lectura. Supervisión puede crear, editar y eliminar
+registros compatibles con sus dependencias y su estado operativo.
