@@ -115,3 +115,29 @@ class InventarioV4Tests(APITestCase):
         self.assertEqual(self.client.get("/").status_code, 200)
         self.assertEqual(self.client.head("/").status_code, 200)
         self.assertEqual(self.client.post("/").status_code, 405)
+
+    def test_clientes_prestamos_y_traslados_v4(self):
+        self.autenticar()
+        obra = self.crear("obras", {"nombre": "Obra Sur", "direccion": "Av. Matta 100"})
+        bod1 = self.crear("bodegas", {"nombre": "Bodega 1", "obra": obra})
+        bod2 = self.crear("bodegas", {"nombre": "Bodega 2", "obra": obra})
+        herr = self.crear("herramientas", {"codigo": "CLI-01", "nombre": "Taladro", "bodega": bod1})
+        cli = self.crear("clientes", {"nombre": "Constructora Sur", "identificador": "76.123.456-7"})
+
+        tr = self.client.post(self.base + "traslados/", {"activo": herr, "destino": bod2}, format="json")
+        self.assertEqual(tr.status_code, 201)
+        self.assertEqual(Activo.objects.get(pk=herr).bodega_id, bod2)
+
+        pr = self.client.post(self.base + "prestamos/", {
+            "activo": herr, "contratista": cli, "vence_en": "2099-01-01T18:00:00Z",
+            "responsable_entrega": "Juan Pérez", "firma_entrega": "JP",
+        }, format="json")
+        self.assertEqual(pr.status_code, 201)
+        self.assertEqual(Activo.objects.get(pk=herr).estado, Activo.Estado.EN_USO)
+
+        dev = self.client.post(f"{self.base}prestamos/{pr.data['id']}/devolver/", {
+            "horas_utilizadas": 12, "responsable_devolucion": "Juan Pérez", "firma_devolucion": "JP",
+        }, format="json")
+        self.assertEqual(dev.status_code, 200)
+        self.assertEqual(Activo.objects.get(pk=herr).estado, Activo.Estado.DISPONIBLE)
+        self.assertEqual(Activo.objects.get(pk=herr).horas_uso, 12)

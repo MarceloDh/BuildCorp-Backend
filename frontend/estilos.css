@@ -97,10 +97,10 @@ tbody tr:last-child td { border-bottom: 0; }
   font-weight: 700;
   white-space: nowrap;
 }
-.estado-disponible, .estado-completado { background: #e3f3e8; color: #195e33; }
-.estado-en_uso, .estado-en_curso { background: #e5effa; color: #1d4f8a; }
+.estado-disponible, .estado-completado, .estado-devuelto { background: #e3f3e8; color: #195e33; }
+.estado-en_uso, .estado-en_curso, .estado-vigente { background: #e5effa; color: #1d4f8a; }
 .estado-programado, .estado-reservado { background: #fdf3d7; color: #7a5409; }
-.estado-mantenimiento, .estado-baja, .estado-cancelado { background: #fbe9e8; color: #9c2419; }
+.estado-mantenimiento, .estado-baja, .estado-cancelado, .estado-vencido { background: #fbe9e8; color: #9c2419; }
 .pie-tabla { justify-content: space-between; margin-top: 1rem; }
 #estado { margin: 1rem 0; font-weight: 600; }
 #estado.error { color: #9c2419; font-weight: 650; }

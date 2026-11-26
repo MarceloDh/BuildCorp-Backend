@@ -10,15 +10,15 @@ from django.db import IntegrityError, transaction
 from django.db.models.deletion import ProtectedError
 from django.urls import include, path
 from rest_framework import permissions, routers, serializers, status, viewsets
-from rest_framework.decorators import api_view, authentication_classes, permission_classes
+from rest_framework.decorators import action, api_view, authentication_classes, permission_classes
 from rest_framework.exceptions import APIException
 from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from .access import puede_operar, puede_supervisar
-from .models import Activo, Bodega, Mantenimiento, Obra
-from .services import programar
+from .models import Activo, Bodega, Contratista, Mantenimiento, Obra, Prestamo, Traslado
+from .services import devolver, entregar, programar, trasladar
 
 logger = logging.getLogger(__name__)
 
@@ -175,6 +175,101 @@ class MantenimientosAPI(InventarioCRUD):
         instance.delete()
 
 
+class ClienteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Contratista
+        fields = ("id", "nombre", "identificador", "contacto", "telefono", "direccion", "comuna", "region", "bloqueado_manual")
+        read_only_fields = ("bloqueado_manual",)
+
+
+class ClientesAPI(InventarioCRUD):
+    queryset = Contratista.objects.all()
+    serializer_class = ClienteSerializer
+
+
+class PrestamoSerializer(serializers.ModelSerializer):
+    estado_visible = serializers.CharField(read_only=True)
+    bodega = serializers.PrimaryKeyRelatedField(read_only=True)
+
+    class Meta:
+        model = Prestamo
+        fields = (
+            "id", "activo", "contratista", "bodega", "entregado_en", "vence_en",
+            "responsable_entrega", "firma_entrega", "devuelto_en",
+            "responsable_devolucion", "horas_utilizadas", "estado_visible",
+        )
+        read_only_fields = ("entregado_en", "devuelto_en", "responsable_devolucion", "horas_utilizadas")
+
+    def create(self, validated_data):
+        usuario = self.context["request"].user
+        try:
+            return entregar(
+                activo=validated_data["activo"],
+                contratista=validated_data["contratista"],
+                vence_en=validated_data["vence_en"],
+                responsable=validated_data["responsable_entrega"],
+                firma=validated_data["firma_entrega"],
+                usuario=usuario,
+            )
+        except DjangoValidationError as error:
+            raise serializers.ValidationError(error.messages) from error
+
+
+class DevolucionSerializer(serializers.Serializer):
+    horas_utilizadas = serializers.IntegerField(min_value=0, max_value=100_000)
+    responsable_devolucion = serializers.CharField(max_length=120)
+    firma_devolucion = serializers.CharField(max_length=500)
+
+
+class PrestamosAPI(viewsets.GenericViewSet, viewsets.mixins.ListModelMixin, viewsets.mixins.RetrieveModelMixin, viewsets.mixins.CreateModelMixin):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [PermisosInventario]
+    queryset = Prestamo.objects.select_related("activo", "contratista", "bodega").all()
+    serializer_class = PrestamoSerializer
+
+    @action(detail=True, methods=["post"])
+    def devolver(self, request, pk=None):
+        prestamo = self.get_object()
+        ser = DevolucionSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        try:
+            devolver(
+                prestamo=prestamo,
+                horas=ser.validated_data["horas_utilizadas"],
+                responsable=ser.validated_data["responsable_devolucion"],
+                firma=ser.validated_data["firma_devolucion"],
+                usuario=request.user,
+            )
+        except DjangoValidationError as error:
+            raise serializers.ValidationError(error.messages) from error
+        prestamo.refresh_from_db()
+        return Response(self.get_serializer(prestamo).data)
+
+
+class TrasladoSerializer(serializers.ModelSerializer):
+    origen = serializers.PrimaryKeyRelatedField(read_only=True)
+
+    class Meta:
+        model = Traslado
+        fields = ("id", "activo", "origen", "destino", "registrado_en")
+        read_only_fields = ("registrado_en",)
+
+    def create(self, validated_data):
+        usuario = self.context["request"].user
+        try:
+            trasladar(activo=validated_data["activo"], destino=validated_data["destino"], usuario=usuario)
+        except DjangoValidationError as error:
+            raise serializers.ValidationError(error.messages) from error
+        return Traslado.objects.filter(activo=validated_data["activo"]).first()
+
+
+class TrasladosAPI(viewsets.GenericViewSet, viewsets.mixins.ListModelMixin, viewsets.mixins.RetrieveModelMixin, viewsets.mixins.CreateModelMixin):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [PermisosInventario]
+    queryset = Traslado.objects.select_related("activo", "origen", "destino").all()
+    serializer_class = TrasladoSerializer
+
+
 @api_view(["GET"])
 @authentication_classes([])
 @permission_classes([permissions.AllowAny])
@@ -213,6 +308,9 @@ router.register("obras", ObrasAPI)
 router.register("bodegas", BodegasAPI)
 router.register("herramientas", HerramientasAPI)
 router.register("mantenimientos", MantenimientosAPI)
+router.register("clientes", ClientesAPI)
+router.register("prestamos", PrestamosAPI)
+router.register("traslados", TrasladosAPI)
 
 urlpatterns = [
     path("salud/", salud),

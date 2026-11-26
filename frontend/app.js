@@ -4,6 +4,7 @@ const secciones = {
   obras: {
     titulo: "Obras",
     descripcion: "Proyectos activos de construcción con nombre único.",
+    editable: true,
     campos: [
       { clave: "nombre", nombre: "Nombre", max: 100, requerido: true },
       { clave: "direccion", nombre: "Dirección", max: 200, requerido: true },
@@ -12,6 +13,7 @@ const secciones = {
   bodegas: {
     titulo: "Bodegas",
     descripcion: "Recintos de almacenamiento asociados a cada obra.",
+    editable: true,
     campos: [
       { clave: "nombre", nombre: "Nombre", max: 100, requerido: true },
       { clave: "obra", nombre: "Obra", relacion: "obras", requerido: true },
@@ -20,6 +22,7 @@ const secciones = {
   herramientas: {
     titulo: "Herramientas",
     descripcion: "Inventario de equipos y maquinaria asignados por bodega.",
+    editable: true,
     campos: [
       { clave: "codigo", nombre: "Código", max: 30, requerido: true },
       { clave: "nombre", nombre: "Nombre", max: 120, requerido: true },
@@ -29,9 +32,50 @@ const secciones = {
       { clave: "estado", nombre: "Estado", lectura: true },
     ],
   },
+  clientes: {
+    titulo: "Clientes",
+    descripcion: "Contratistas y empresas habilitadas para arriendo o préstamo de herramientas.",
+    editable: true,
+    campos: [
+      { clave: "nombre", nombre: "Nombre / Razón social", max: 120, requerido: true },
+      { clave: "identificador", nombre: "RUT o identificador", max: 30, requerido: true },
+      { clave: "contacto", nombre: "Correo de contacto", tipo: "email" },
+      { clave: "telefono", nombre: "Teléfono", max: 25 },
+      { clave: "direccion", nombre: "Dirección", max: 200 },
+      { clave: "comuna", nombre: "Comuna", max: 80 },
+      { clave: "region", nombre: "Región", max: 80 },
+    ],
+  },
+  prestamos: {
+    titulo: "Préstamos",
+    descripcion: "Asignación y entrega de herramientas a clientes con control de devolución.",
+    soloCrear: true,
+    campos: [
+      { clave: "activo", nombre: "Herramienta", relacion: "herramientas", requerido: true },
+      { clave: "contratista", nombre: "Cliente", relacion: "clientes", requerido: true },
+      { clave: "bodega", nombre: "Bodega origen", relacion: "bodegas", lectura: true },
+      { clave: "vence_en", nombre: "Devolver antes de", tipo: "datetime-local", requerido: true },
+      { clave: "responsable_entrega", nombre: "Responsable entrega", max: 120, requerido: true },
+      { clave: "firma_entrega", nombre: "Firma entrega", max: 200, requerido: true, ocultarTabla: true },
+      { clave: "horas_utilizadas", nombre: "Horas usadas", lectura: true },
+      { clave: "estado_visible", nombre: "Estado", lectura: true },
+    ],
+  },
+  traslados: {
+    titulo: "Traslados",
+    descripcion: "Movimiento auditado de herramientas disponibles entre bodegas.",
+    soloCrear: true,
+    campos: [
+      { clave: "activo", nombre: "Herramienta", relacion: "herramientas", requerido: true },
+      { clave: "origen", nombre: "Bodega origen", relacion: "bodegas", lectura: true },
+      { clave: "destino", nombre: "Bodega destino", relacion: "bodegas", requerido: true },
+      { clave: "registrado_en", nombre: "Fecha", lectura: true },
+    ],
+  },
   mantenimientos: {
     titulo: "Mantenimientos",
     descripcion: "Inspecciones programadas por fecha límite o umbral de horas.",
+    editable: true,
     campos: [
       { clave: "activo", nombre: "Herramienta", relacion: "herramientas", requerido: true },
       { clave: "tarea", nombre: "Tarea", max: 150, requerido: true },
@@ -48,15 +92,17 @@ const nombresEstado = {
   disponible: "Disponible", reservado: "Reservado", en_uso: "En uso",
   mantenimiento: "En mantenimiento", baja: "Dada de baja", programado: "Programado",
   en_curso: "En curso", completado: "Completado", cancelado: "Cancelado",
+  Vigente: "Vigente", Vencido: "Vencido", Devuelto: "Devuelto",
 };
 let tokens;
 let perfil;
 let seccion = "herramientas";
 let pagina = 1;
 let editando;
+let devolviendo;
 let ocupado = false;
 let registrosActuales = [];
-let mapasRelacion = { obras: new Map(), bodegas: new Map(), herramientas: new Map() };
+let mapasRelacion = { obras: new Map(), bodegas: new Map(), herramientas: new Map(), clientes: new Map() };
 
 function texto(tag, valor, clase = "") {
   const nodo = document.createElement(tag);
@@ -122,7 +168,9 @@ async function solicitar(ruta, { metodo = "GET", datos, autenticado = true } = {
 }
 
 function etiquetaRegistro(opcion) {
-  return opcion.codigo ? opcion.codigo + " · " + opcion.nombre : opcion.nombre;
+  if (opcion.codigo) return opcion.codigo + " · " + opcion.nombre;
+  if (opcion.identificador) return opcion.nombre + " (" + opcion.identificador + ")";
+  return opcion.nombre;
 }
 
 async function listarTodo(nombreSeccion) {
@@ -138,7 +186,7 @@ async function listarTodo(nombreSeccion) {
 
 async function actualizarResumenYMapas() {
   const tarjetas = [];
-  const nuevosMapas = { obras: new Map(), bodegas: new Map(), herramientas: new Map() };
+  const nuevosMapas = { obras: new Map(), bodegas: new Map(), herramientas: new Map(), clientes: new Map() };
   const resultados = await Promise.all(
     Object.keys(secciones).map(async clave => [clave, await listarTodo(clave)]),
   );
@@ -149,6 +197,7 @@ async function actualizarResumenYMapas() {
       }
     }
     const card = boton("", async () => {
+      elemento("filtro").value = "";
       await cargar(1, clave);
       cerrarFormulario();
       elemento("titulo").focus();
@@ -169,19 +218,25 @@ function valorCelda(campo, registro) {
     const etiqueta = mapasRelacion[campo.relacion]?.get(bruto);
     return etiqueta ? etiqueta + " (#" + bruto + ")" : "#" + bruto;
   }
-  if (campo.clave === "estado") return nombresEstado[bruto] || bruto || "—";
+  if (campo.clave === "estado" || campo.clave === "estado_visible") {
+    return nombresEstado[bruto] || bruto || "—";
+  }
+  if ((campo.clave === "vence_en" || campo.clave === "registrado_en") && bruto) {
+    return String(bruto).slice(0, 16).replace("T", " ");
+  }
   if (bruto === null || bruto === undefined || bruto === "") return "—";
   return String(bruto);
 }
 
 function renderizarFilas() {
-  const { campos } = secciones[seccion];
+  const cfg = secciones[seccion];
+  const camposVisibles = cfg.campos.filter(c => !c.ocultarTabla);
   const termino = elemento("filtro").value.trim().toLowerCase();
   const filtrados = termino
     ? registrosActuales.filter(registro => {
         const textoFila = [
           String(registro.id),
-          ...campos.map(c => valorCelda(c, registro)),
+          ...camposVisibles.map(c => valorCelda(c, registro)),
         ].join(" ").toLowerCase();
         return textoFila.includes(termino);
       })
@@ -191,28 +246,31 @@ function renderizarFilas() {
     const fila = document.createElement("tr");
     fila.append(
       texto("td", registro.id),
-      ...campos.map(campo => {
+      ...camposVisibles.map(campo => {
         const celda = document.createElement("td");
         const val = valorCelda(campo, registro);
-        if (campo.clave === "estado" && registro.estado) {
-          celda.append(texto("span", val, "estado-pill estado-" + registro.estado));
+        const claveEstado = campo.clave === "estado" || campo.clave === "estado_visible" ? registro[campo.clave] : "";
+        if (claveEstado) {
+          celda.append(texto("span", val, "estado-pill estado-" + String(claveEstado).toLowerCase()));
         } else {
           celda.textContent = val;
         }
         return celda;
       }),
     );
-    if (perfil.puede_editar) {
+    if (perfil.puede_editar && (cfg.editable || seccion === "prestamos")) {
       const celda = document.createElement("td");
-      if (seccion !== "mantenimientos" || registro.estado === "programado") {
-        const acciones = document.createElement("div");
-        acciones.className = "acciones";
+      const acciones = document.createElement("div");
+      acciones.className = "acciones";
+      if (seccion === "prestamos" && !registro.devuelto_en) {
+        acciones.append(boton("Registrar devolución", () => abrirDevolucion(registro), "principal"));
+      } else if (cfg.editable && (seccion !== "mantenimientos" || registro.estado === "programado")) {
         acciones.append(
           boton("Editar", () => abrirFormulario(registro)),
           boton("Eliminar", () => eliminar(registro), "peligro"),
         );
-        celda.append(acciones);
       }
+      if (acciones.children.length) celda.append(acciones);
       fila.append(celda);
     }
     return fila;
@@ -230,6 +288,7 @@ function renderizarFilas() {
 
 function cerrarFormulario() {
   editando = null;
+  devolviendo = null;
   elemento("panel-formulario").hidden = true;
   elemento("campos").replaceChildren();
 }
@@ -238,7 +297,7 @@ function cerrarSesion() {
   tokens = undefined;
   perfil = undefined;
   registrosActuales = [];
-  mapasRelacion = { obras: new Map(), bodegas: new Map(), herramientas: new Map() };
+  mapasRelacion = { obras: new Map(), bodegas: new Map(), herramientas: new Map(), clientes: new Map() };
   elemento("login").reset();
   elemento("filtro").value = "";
   elemento("resumen").replaceChildren();
@@ -259,18 +318,19 @@ async function cargar(registroPagina = pagina, destino = seccion) {
   seccion = destino;
   pagina = registroPagina;
   registrosActuales = datos.results;
-  const { titulo, descripcion, campos } = secciones[seccion];
-  elemento("titulo").textContent = titulo;
+  const cfg = secciones[seccion];
+  const camposVisibles = cfg.campos.filter(c => !c.ocultarTabla);
+  elemento("titulo").textContent = cfg.titulo;
   elemento("subtitulo").textContent =
-    descripcion + (perfil.puede_editar ? " · Permiso: Supervisión (lectura y escritura)." : " · Permiso: Bodega (solo consulta).");
+    cfg.descripcion + (perfil.puede_editar ? " · Permiso: Supervisión (lectura y escritura)." : " · Permiso: Bodega (solo consulta).");
   elemento("nuevo").hidden = !perfil.puede_editar;
   for (const item of elemento("navegacion").children) {
     if (item.dataset.seccion === seccion) item.setAttribute("aria-current", "page");
     else item.removeAttribute("aria-current");
   }
   const encabezado = document.createElement("tr");
-  encabezado.append(texto("th", "ID"), ...campos.map(campo => texto("th", campo.nombre)));
-  if (perfil.puede_editar) encabezado.append(texto("th", "Acciones"));
+  encabezado.append(texto("th", "ID"), ...camposVisibles.map(campo => texto("th", campo.nombre)));
+  if (perfil.puede_editar && (cfg.editable || seccion === "prestamos")) encabezado.append(texto("th", "Acciones"));
   elemento("columnas").replaceChildren(encabezado);
 
   renderizarFilas();
@@ -278,6 +338,35 @@ async function cargar(registroPagina = pagina, destino = seccion) {
   elemento("siguiente").disabled = !datos.next;
   elemento("pagina").textContent = "Página " + pagina + " · " + datos.count + " registros";
   return datos;
+}
+
+function abrirDevolucion(prestamo) {
+  cerrarFormulario();
+  devolviendo = prestamo;
+  const camposDev = [
+    { clave: "horas_utilizadas", nombre: "Horas utilizadas", tipo: "number", min: "0", max: "100000", requerido: true },
+    { clave: "responsable_devolucion", nombre: "Responsable devolución", max: 120, requerido: true },
+    { clave: "firma_devolucion", nombre: "Firma devolución", max: 200, requerido: true },
+  ];
+  const controles = camposDev.map(campo => {
+    const etiqueta = document.createElement("label");
+    const titulo = texto("span", campo.nombre);
+    const control = document.createElement("input");
+    control.name = campo.clave;
+    control.type = campo.tipo || "text";
+    control.required = Boolean(campo.requerido);
+    if (campo.min !== undefined) control.min = campo.min;
+    if (campo.max !== undefined) {
+      if (control.type === "number") control.max = campo.max;
+      else control.maxLength = campo.max;
+    }
+    etiqueta.append(titulo, control);
+    return etiqueta;
+  });
+  elemento("titulo-formulario").textContent = "Registrar devolución · Préstamo #" + prestamo.id;
+  elemento("campos").replaceChildren(...controles);
+  elemento("panel-formulario").hidden = false;
+  controles[0]?.lastElementChild.focus();
 }
 
 async function abrirFormulario(registro = null) {
@@ -365,6 +454,15 @@ elemento("registro").addEventListener("submit", evento => {
   evento.preventDefault();
   void procesar(async () => {
     const datos = Object.fromEntries(new FormData(elemento("registro")));
+    if (devolviendo) {
+      datos.horas_utilizadas = Number(datos.horas_utilizadas);
+      const idPrestamo = devolviendo.id;
+      await solicitar("prestamos/" + idPrestamo + "/devolver/", { metodo: "POST", datos });
+      cerrarFormulario();
+      await cargar(pagina);
+      mensaje("Devolución registrada · Préstamo #" + idPrestamo + ".");
+      return;
+    }
     for (const campo of secciones[seccion].campos) {
       if (!(campo.clave in datos)) continue;
       const valor = datos[campo.clave];
