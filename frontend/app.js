@@ -1,30 +1,46 @@
 "use strict";
 
 const secciones = {
-  obras: { titulo: "Obras", campos: [
-    { clave: "nombre", nombre: "Nombre", max: 100, requerido: true },
-    { clave: "direccion", nombre: "Dirección", max: 200, requerido: true },
-  ] },
-  bodegas: { titulo: "Bodegas", campos: [
-    { clave: "nombre", nombre: "Nombre", max: 100, requerido: true },
-    { clave: "obra", nombre: "Obra", relacion: "obras", requerido: true },
-  ] },
-  herramientas: { titulo: "Herramientas", campos: [
-    { clave: "codigo", nombre: "Código", max: 30, requerido: true },
-    { clave: "nombre", nombre: "Nombre", max: 120, requerido: true },
-    { clave: "descripcion", nombre: "Descripción", tipo: "textarea" },
-    { clave: "bodega", nombre: "Bodega", relacion: "bodegas", requerido: true },
-    { clave: "horas_uso", nombre: "Horas de uso", lectura: true },
-    { clave: "estado", nombre: "Estado", lectura: true },
-  ] },
-  mantenimientos: { titulo: "Mantenimientos", campos: [
-    { clave: "activo", nombre: "Herramienta", relacion: "herramientas", requerido: true },
-    { clave: "tarea", nombre: "Tarea", max: 150, requerido: true },
-    { clave: "fecha_limite", nombre: "Fecha límite", tipo: "date", anulable: true },
-    { clave: "horas_limite", nombre: "Umbral en horas", tipo: "number", anulable: true },
-    { clave: "observaciones", nombre: "Observaciones", tipo: "textarea", max: 2000 },
-    { clave: "estado", nombre: "Estado", lectura: true },
-  ] },
+  obras: {
+    titulo: "Obras",
+    descripcion: "Proyectos activos de construcción con nombre único.",
+    campos: [
+      { clave: "nombre", nombre: "Nombre", max: 100, requerido: true },
+      { clave: "direccion", nombre: "Dirección", max: 200, requerido: true },
+    ],
+  },
+  bodegas: {
+    titulo: "Bodegas",
+    descripcion: "Recintos de almacenamiento asociados a cada obra.",
+    campos: [
+      { clave: "nombre", nombre: "Nombre", max: 100, requerido: true },
+      { clave: "obra", nombre: "Obra", relacion: "obras", requerido: true },
+    ],
+  },
+  herramientas: {
+    titulo: "Herramientas",
+    descripcion: "Inventario de equipos y maquinaria asignados por bodega.",
+    campos: [
+      { clave: "codigo", nombre: "Código", max: 30, requerido: true },
+      { clave: "nombre", nombre: "Nombre", max: 120, requerido: true },
+      { clave: "descripcion", nombre: "Descripción", tipo: "textarea" },
+      { clave: "bodega", nombre: "Bodega", relacion: "bodegas", requerido: true },
+      { clave: "horas_uso", nombre: "Horas de uso", lectura: true },
+      { clave: "estado", nombre: "Estado", lectura: true },
+    ],
+  },
+  mantenimientos: {
+    titulo: "Mantenimientos",
+    descripcion: "Inspecciones programadas por fecha límite o umbral de horas.",
+    campos: [
+      { clave: "activo", nombre: "Herramienta", relacion: "herramientas", requerido: true },
+      { clave: "tarea", nombre: "Tarea", max: 150, requerido: true },
+      { clave: "fecha_limite", nombre: "Fecha límite", tipo: "date", anulable: true },
+      { clave: "horas_limite", nombre: "Umbral en horas", tipo: "number", anulable: true },
+      { clave: "observaciones", nombre: "Observaciones", tipo: "textarea", max: 2000 },
+      { clave: "estado", nombre: "Estado", lectura: true },
+    ],
+  },
 };
 
 const elemento = id => document.getElementById(id);
@@ -39,22 +55,25 @@ let seccion = "herramientas";
 let pagina = 1;
 let editando;
 let ocupado = false;
+let registrosActuales = [];
+let mapasRelacion = { obras: new Map(), bodegas: new Map(), herramientas: new Map() };
 
-function texto(tag, valor) {
+function texto(tag, valor, clase = "") {
   const nodo = document.createElement(tag);
   nodo.textContent = valor;
+  if (clase) nodo.className = clase;
   return nodo;
 }
 
-function boton(etiqueta, accion) {
-  const nodo = texto("button", etiqueta);
+function boton(etiqueta, accion, clase = "") {
+  const nodo = texto("button", etiqueta, clase);
   nodo.type = "button";
   nodo.addEventListener("click", () => { void procesar(accion); });
   return nodo;
 }
 
-function mensaje(texto, error = false) {
-  elemento("estado").textContent = texto;
+function mensaje(contenido, error = false) {
+  elemento("estado").textContent = contenido;
   elemento("estado").classList.toggle("error", error);
 }
 
@@ -102,6 +121,113 @@ async function solicitar(ruta, { metodo = "GET", datos, autenticado = true } = {
   return contenido;
 }
 
+function etiquetaRegistro(opcion) {
+  return opcion.codigo ? opcion.codigo + " · " + opcion.nombre : opcion.nombre;
+}
+
+async function listarTodo(nombreSeccion) {
+  const lista = [];
+  let numero = 1;
+  let datos;
+  do {
+    datos = await solicitar(nombreSeccion + "/?page=" + numero++);
+    lista.push(...datos.results);
+  } while (datos.next);
+  return { total: datos.count, items: lista };
+}
+
+async function actualizarResumenYMapas() {
+  const tarjetas = [];
+  const nuevosMapas = { obras: new Map(), bodegas: new Map(), herramientas: new Map() };
+  const resultados = await Promise.all(
+    Object.keys(secciones).map(async clave => [clave, await listarTodo(clave)]),
+  );
+  for (const [clave, info] of resultados) {
+    if (clave in nuevosMapas) {
+      for (const item of info.items) {
+        nuevosMapas[clave].set(item.id, etiquetaRegistro(item));
+      }
+    }
+    const card = boton("", async () => {
+      await cargar(1, clave);
+      cerrarFormulario();
+      elemento("titulo").focus();
+    }, "tarjeta");
+    card.append(
+      texto("span", secciones[clave].titulo, "tarjeta-etiqueta"),
+      texto("span", String(info.total), "tarjeta-valor"),
+    );
+    tarjetas.push(card);
+  }
+  mapasRelacion = nuevosMapas;
+  elemento("resumen").replaceChildren(...tarjetas);
+}
+
+function valorCelda(campo, registro) {
+  const bruto = registro[campo.clave];
+  if (campo.relacion && bruto != null) {
+    const etiqueta = mapasRelacion[campo.relacion]?.get(bruto);
+    return etiqueta ? etiqueta + " (#" + bruto + ")" : "#" + bruto;
+  }
+  if (campo.clave === "estado") return nombresEstado[bruto] || bruto || "—";
+  if (bruto === null || bruto === undefined || bruto === "") return "—";
+  return String(bruto);
+}
+
+function renderizarFilas() {
+  const { campos } = secciones[seccion];
+  const termino = elemento("filtro").value.trim().toLowerCase();
+  const filtrados = termino
+    ? registrosActuales.filter(registro => {
+        const textoFila = [
+          String(registro.id),
+          ...campos.map(c => valorCelda(c, registro)),
+        ].join(" ").toLowerCase();
+        return textoFila.includes(termino);
+      })
+    : registrosActuales;
+
+  const filas = filtrados.map(registro => {
+    const fila = document.createElement("tr");
+    fila.append(
+      texto("td", registro.id),
+      ...campos.map(campo => {
+        const celda = document.createElement("td");
+        const val = valorCelda(campo, registro);
+        if (campo.clave === "estado" && registro.estado) {
+          celda.append(texto("span", val, "estado-pill estado-" + registro.estado));
+        } else {
+          celda.textContent = val;
+        }
+        return celda;
+      }),
+    );
+    if (perfil.puede_editar) {
+      const celda = document.createElement("td");
+      if (seccion !== "mantenimientos" || registro.estado === "programado") {
+        const acciones = document.createElement("div");
+        acciones.className = "acciones";
+        acciones.append(
+          boton("Editar", () => abrirFormulario(registro)),
+          boton("Eliminar", () => eliminar(registro), "peligro"),
+        );
+        celda.append(acciones);
+      }
+      fila.append(celda);
+    }
+    return fila;
+  });
+
+  if (!filas.length) {
+    const fila = document.createElement("tr");
+    const celda = texto("td", termino ? "Sin coincidencias para el filtro actual." : "Aún no hay registros.");
+    celda.colSpan = elemento("columnas").firstElementChild?.children.length || 1;
+    fila.append(celda);
+    filas.push(fila);
+  }
+  elemento("filas").replaceChildren(...filas);
+}
+
 function cerrarFormulario() {
   editando = null;
   elemento("panel-formulario").hidden = true;
@@ -111,7 +237,11 @@ function cerrarFormulario() {
 function cerrarSesion() {
   tokens = undefined;
   perfil = undefined;
+  registrosActuales = [];
+  mapasRelacion = { obras: new Map(), bodegas: new Map(), herramientas: new Map() };
   elemento("login").reset();
+  elemento("filtro").value = "";
+  elemento("resumen").replaceChildren();
   elemento("inventario").hidden = true;
   elemento("cuenta").hidden = true;
   elemento("acceso").hidden = false;
@@ -122,11 +252,17 @@ function cerrarSesion() {
 }
 
 async function cargar(registroPagina = pagina, destino = seccion) {
-  const datos = await solicitar(destino + "/?page=" + registroPagina);
+  const [datos] = await Promise.all([
+    solicitar(destino + "/?page=" + registroPagina),
+    actualizarResumenYMapas(),
+  ]);
   seccion = destino;
   pagina = registroPagina;
-  const { titulo, campos } = secciones[seccion];
+  registrosActuales = datos.results;
+  const { titulo, descripcion, campos } = secciones[seccion];
   elemento("titulo").textContent = titulo;
+  elemento("subtitulo").textContent =
+    descripcion + (perfil.puede_editar ? " · Permiso: Supervisión (lectura y escritura)." : " · Permiso: Bodega (solo consulta).");
   elemento("nuevo").hidden = !perfil.puede_editar;
   for (const item of elemento("navegacion").children) {
     if (item.dataset.seccion === seccion) item.setAttribute("aria-current", "page");
@@ -137,34 +273,7 @@ async function cargar(registroPagina = pagina, destino = seccion) {
   if (perfil.puede_editar) encabezado.append(texto("th", "Acciones"));
   elemento("columnas").replaceChildren(encabezado);
 
-  const filas = datos.results.map(registro => {
-    const fila = document.createElement("tr");
-    fila.append(texto("td", registro.id), ...campos.map(campo => texto(
-      "td", campo.clave === "estado" ? nombresEstado[registro.estado] || registro.estado : registro[campo.clave] ?? "—",
-    )));
-    if (perfil.puede_editar) {
-      const celda = document.createElement("td");
-      if (seccion !== "mantenimientos" || registro.estado === "programado") {
-        const acciones = document.createElement("div");
-        acciones.className = "acciones";
-        acciones.append(
-          boton("Editar", () => abrirFormulario(registro)),
-          boton("Eliminar", () => eliminar(registro)),
-        );
-        celda.append(acciones);
-      }
-      fila.append(celda);
-    }
-    return fila;
-  });
-  if (!filas.length) {
-    const fila = document.createElement("tr");
-    const celda = texto("td", "Aún no hay registros.");
-    celda.colSpan = encabezado.children.length;
-    fila.append(celda);
-    filas.push(fila);
-  }
-  elemento("filas").replaceChildren(...filas);
+  renderizarFilas();
   elemento("anterior").disabled = !datos.previous;
   elemento("siguiente").disabled = !datos.next;
   elemento("pagina").textContent = "Página " + pagina + " · " + datos.count + " registros";
@@ -191,15 +300,10 @@ async function abrirFormulario(registro = null) {
     }
     if (campo.relacion) {
       control.append(new Option("Selecciona " + campo.nombre.toLowerCase(), ""));
-      let numero = 1;
-      let datos;
-      do {
-        datos = await solicitar(campo.relacion + "/?page=" + numero++);
-        for (const opcion of datos.results) {
-          const titulo = opcion.codigo ? opcion.codigo + " · " + opcion.nombre : opcion.nombre;
-          control.append(new Option(titulo + " (#" + opcion.id + ")", opcion.id));
-        }
-      } while (datos.next);
+      const { items } = await listarTodo(campo.relacion);
+      for (const opcion of items) {
+        control.append(new Option(etiquetaRegistro(opcion) + " (#" + opcion.id + ")", opcion.id));
+      }
       if (control.options.length === 1) throw new Error("Crea primero un registro en " + secciones[campo.relacion].titulo + ".");
     }
     control.value = registro?.[campo.clave] ?? "";
@@ -215,7 +319,7 @@ async function abrirFormulario(registro = null) {
 
 async function eliminar(registro) {
   if (!window.confirm("¿Eliminar el registro #" + registro.id + "?")) return;
-  const unicaFila = elemento("filas").children.length === 1;
+  const unicaFila = registrosActuales.length === 1;
   await solicitar(seccion + "/" + registro.id + "/", { metodo: "DELETE" });
   cerrarFormulario();
   await cargar(unicaFila && pagina > 1 ? pagina - 1 : pagina);
@@ -224,6 +328,7 @@ async function eliminar(registro) {
 
 for (const [clave, datos] of Object.entries(secciones)) {
   const item = boton(datos.titulo, async () => {
+    elemento("filtro").value = "";
     await cargar(1, clave);
     cerrarFormulario();
     elemento("titulo").focus();
@@ -231,6 +336,8 @@ for (const [clave, datos] of Object.entries(secciones)) {
   item.dataset.seccion = clave;
   elemento("navegacion").append(item);
 }
+
+elemento("filtro").addEventListener("input", renderizarFilas);
 
 elemento("login").addEventListener("submit", evento => {
   evento.preventDefault();
@@ -275,6 +382,7 @@ elemento("registro").addEventListener("submit", evento => {
 });
 
 elemento("salir").addEventListener("click", () => procesar(cerrarSesion));
+elemento("actualizar").addEventListener("click", () => procesar(() => cargar(pagina)));
 elemento("nuevo").addEventListener("click", () => procesar(() => abrirFormulario()));
 elemento("cancelar").addEventListener("click", cerrarFormulario);
 elemento("anterior").addEventListener("click", () => procesar(async () => { await cargar(pagina - 1); cerrarFormulario(); }));

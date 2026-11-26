@@ -11,13 +11,16 @@
 </head>
 <body>
   <header class="barra">
-    <div class="marca"><span class="sello" aria-hidden="true">B</span> BuildCorp</div>
-    <div id="cuenta" hidden><span id="usuario"></span> <button id="salir" type="button">Cerrar sesión</button></div>
+    <div class="marca"><span class="sello" aria-hidden="true">B</span> BuildCorp <span class="etiqueta-api">API v4 · JWT</span></div>
+    <div id="cuenta" hidden>
+      <span id="usuario" class="badge-usuario"></span>
+      <button id="salir" type="button">Cerrar sesión</button>
+    </div>
   </header>
   <main>
     <section id="acceso" class="acceso">
       <h1>Control de inventario</h1>
-      <p>Acceso para Supervisión y Bodega.</p>
+      <p>Acceso seguro con autenticación JWT para Supervisión y Bodega.</p>
       <form id="login">
         <label>Usuario <input name="username" autocomplete="username" required></label>
         <label>Contraseña <input name="password" type="password" autocomplete="current-password" required></label>
@@ -25,10 +28,18 @@
       </form>
     </section>
     <section id="inventario" hidden>
+      <div id="resumen" class="resumen" aria-label="Resumen de inventario"></div>
       <nav id="navegacion" aria-label="Secciones de inventario"></nav>
       <div class="encabezado">
-        <h1 id="titulo" tabindex="-1">Inventario</h1>
-        <button id="nuevo" class="principal" type="button" hidden>Nuevo registro</button>
+        <div>
+          <h1 id="titulo" tabindex="-1">Inventario</h1>
+          <p id="subtitulo" class="subtitulo"></p>
+        </div>
+        <div class="controles-vista">
+          <input id="filtro" type="search" placeholder="Buscar en esta vista..." aria-label="Buscar en esta vista">
+          <button id="actualizar" type="button">Actualizar</button>
+          <button id="nuevo" class="principal" type="button" hidden>Nuevo registro</button>
+        </div>
       </div>
       <div id="panel-formulario" class="panel" hidden>
         <h2 id="titulo-formulario">Registro de inventario</h2>
@@ -41,14 +52,16 @@
         </form>
       </div>
       <div class="tabla"><table><thead id="columnas"><tr><th scope="col">ID</th></tr></thead><tbody id="filas"></tbody></table></div>
-      <div class="paginacion">
-        <button id="anterior" type="button" disabled>Anterior</button>
-        <span id="pagina"></span>
-        <button id="siguiente" type="button" disabled>Siguiente</button>
-      </div>
-      <div class="recursos">
-        <button id="guia" type="button">Preparar descarga de guía</button>
-        <a id="descarga" hidden rel="noreferrer" target="_blank">Descargar guía de inventario</a>
+      <div class="pie-tabla">
+        <div class="recursos">
+          <button id="guia" type="button">Preparar descarga de guía (S3)</button>
+          <a id="descarga" hidden rel="noreferrer" target="_blank">Descargar guía de inventario</a>
+        </div>
+        <div class="paginacion">
+          <button id="anterior" type="button" disabled>Anterior</button>
+          <span id="pagina"></span>
+          <button id="siguiente" type="button" disabled>Siguiente</button>
+        </div>
       </div>
     </section>
     <p id="estado" role="status" aria-live="polite"></p>
